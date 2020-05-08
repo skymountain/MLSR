@@ -1,0 +1,10 @@
+(executable
+ (name sr_lambda)
+ (preprocess (pps ppx_deriving.show ppx_deriving.ord))
+)
+
+(ocamllex lexer)
+(menhir
+  (flags --fixed-exception --explain)
+  (modules parser)
+)
