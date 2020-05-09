@@ -223,6 +223,9 @@ and type_operation_clause (var_env, op_env) ret_ty
         err "Type varaibles bound in an operation clause cannot be escaped"
 ;;
 
+let check_SR = ref true
+;;
+
 let signature_restriction =
   let rec tyvars_at_pos = function
     | T.TyVar x -> T.TyvarSet.singleton x
@@ -262,7 +265,9 @@ let signature_restriction =
     let codom_sat = T.TyvarSet.disjoint
       tyvars (tyvars_at_neg codom_ty)
     in
-    if (not dom_sat) && (not codom_sat) then
+    if not !check_SR then
+      None
+    else if (not dom_sat) && (not codom_sat) then
       Some "both of the domain and codomain types"
     else if not dom_sat then
       Some "the domain type"
