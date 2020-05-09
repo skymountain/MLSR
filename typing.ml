@@ -95,8 +95,7 @@ let rec type_expr ((var_env, op_env) as env) = function
   | S.EPair (e1, e2) ->
     let fst_ty, s1 = type_expr env e1 in
     let snd_ty, s2 = type_expr env e2 in
-    let c = constraints_of_subst_list [s1; s2] in
-    let s = solve c in
+    let s = solve @@ constraints_of_subst_list [s1; s2] in
     (T.subst_ty s (TyProd (fst_ty, snd_ty)), s)
   | S.EHandle (e, ((ret_x, ret_body), ops)) ->
     let handled_ty, s1 = type_expr env e in
@@ -104,8 +103,7 @@ let rec type_expr ((var_env, op_env) as env) = function
       let var_env' = Env.add ret_x (T.tyscheme_of_mono handled_ty) var_env in
       type_expr (var_env', op_env) ret_body in
     let s3 = type_handler env ret_ty ops in
-    let c = constraints_of_subst_list [s1; s2; s3] in
-    let s = solve c in
+    let s = solve @@ constraints_of_subst_list [s1; s2; s3] in
     (T.subst_ty s ret_ty, s)
   | S.EInl e ->
     let left_ty, s = type_expr env e in
@@ -175,9 +173,7 @@ let rec type_expr ((var_env, op_env) as env) = function
       (T.subst_ty s n_cty, s)
 
 and type_handler env ret_ty ops =
-  let constraints =
-    List.map (type_operation_clause env ret_ty) ops
-  in
+  let constraints = List.map (type_operation_clause env ret_ty) ops in
   solve (List.flatten constraints)
 
 and type_operation_clause (var_env, op_env) ret_ty
