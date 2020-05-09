@@ -69,6 +69,10 @@ let make_ty_sig tyvars (dom_ty, codom_ty) =
   (T.TyvarSet.of_list ids, dom_ty, codom_ty)
 ;;
 
+let fun_with_params params e =
+  List.fold_right (fun x f -> S.EFun (x, f)) params e
+;;
+
 let check_pattern_vars vars =
   ignore @@
     List.fold_left
@@ -139,14 +143,16 @@ top_level:
 
 decl:
   | e = expr { DExpr e }
-  | LET; x = ID; EQUAL; e = expr { DLet (x, e) }
+  | LET; x = ID; params = param_list; EQUAL; e = expr
+    { DLet (x, fun_with_params params e) }
   | EFFECT; op_name = ID; COLON; t = ty_signature { S.DEff (op_name, t) }
 
 expr:
   | e1 = expr; SEMICOLON; e2 = expr { S.EApp (S.EApp (S.EId ";", e1), e2) }
-  | LET; x = ID; EQUAL; e1 = expr; IN; e2 = expr_below_semi
-    { S.ELet (x, e1, e2) }
-  | FUN; x = ID; RIGHT_ARROW; e = expr_below_semi { S.EFun (x, e) }
+  | LET; x = ID; params = param_list; EQUAL; e1 = expr; IN; e2 = expr_below_semi
+    { S.ELet (x, fun_with_params params e1, e2) }
+  | FUN; params = nonempty_param_list; RIGHT_ARROW; e = expr_below_semi
+    { fun_with_params params e }
   | HANDLE; e = expr; WITH; h = handler_expr { S.EHandle (e, h) }
   | LEFT_PAREN; f = expr; COMMA; s = expr; RIGHT_PAREN { S.EPair (f, s) }
   | INL; e = binary_op_expr { S.EInl e }
@@ -239,6 +245,12 @@ match_clause:
       check_pattern_vars [x; xs];
       S.MList (en, x, xs, ec)
     }
+
+param_list:
+  | xs = ID* { xs }
+
+nonempty_param_list:
+  | xs = ID+ { xs }
 
 %inline binary_op:
   | PLUS { "+" }
