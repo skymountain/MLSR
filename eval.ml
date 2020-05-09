@@ -24,6 +24,18 @@ let rec eval_expr ((var_env, op_env) as env) = function
   | ELet (x, e1, e2) ->
     let* v1 = eval_expr env e1 in
     eval_expr (Env.add x v1 var_env, op_env) e2
+  | ELetRec (x, y, e1, e2) ->
+    let rec fixed_point () =
+      VFun (fun yv ->
+          let var_env' =
+            Env.add y yv @@
+            Env.add x (fixed_point ()) @@
+            var_env
+          in
+          eval_expr (var_env', op_env) e1)
+    in
+    let v1 = fixed_point () in
+    eval_expr (Env.add x v1 var_env, op_env) e2
   | EFun (x, e) ->
     return @@ VFun (fun v -> eval_expr (Env.add x v var_env, op_env) e)
   | EApp (e1, e2) ->

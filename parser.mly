@@ -145,12 +145,16 @@ decl:
   | e = expr { DExpr e }
   | LET; x = ID; params = param_list; EQUAL; e = expr
     { DLet (x, fun_with_params params e) }
+  | LET; REC; x = ID; y = ID; params = param_list; EQUAL; e = expr
+    { S.DLet (x, S.ELetRec (x, y, fun_with_params params e, S.EId x)) }
   | EFFECT; op_name = ID; COLON; t = ty_signature { S.DEff (op_name, t) }
 
 expr:
   | e1 = expr; SEMICOLON; e2 = expr { S.EApp (S.EApp (S.EId ";", e1), e2) }
   | LET; x = ID; params = param_list; EQUAL; e1 = expr; IN; e2 = expr_below_semi
     { S.ELet (x, fun_with_params params e1, e2) }
+  | LET; REC; x = ID; y = ID; params = param_list; EQUAL; e1 = expr; IN; e2 = expr_below_semi
+    { S.ELetRec (x, y, fun_with_params params e1, e2) }
   | FUN; params = nonempty_param_list; RIGHT_ARROW; e = expr_below_semi
     { fun_with_params params e }
   | HANDLE; e = expr; WITH; h = handler_expr { S.EHandle (e, h) }

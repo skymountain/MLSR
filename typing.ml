@@ -75,6 +75,25 @@ let rec type_expr ((var_env, op_env) as env) = function
     let ty2, s2 = type_expr (Env.add x ty_scheme1 var_env', op_env) e2 in
     let s = solve @@ constraints_of_subst_list [s1; s2] in
     (T.subst_ty s ty2, s)
+  | S.ELetRec (x, y, e1, e2) ->
+    let arg_ty = T.fresh_tyvar () in
+    let ret_ty = T.fresh_tyvar () in
+    let fun_ty = T.TyFun (arg_ty, ret_ty) in
+    let ty1, s1 =
+      let var_env' =
+        Env.add y (T.tyscheme_of_mono arg_ty) @@
+        Env.add x (T.tyscheme_of_mono fun_ty) @@
+        var_env
+      in
+      type_expr (var_env', op_env) e1
+    in
+    let s1 = solve @@ (ret_ty, ty1) :: (constraints_of_subst s1) in
+    let fun_ty' = T.subst_ty s1 fun_ty in
+    let var_env' = T.subst_tyenv s1 var_env in
+    let fun_ty_scheme = T.closing var_env' fun_ty' in
+    let ty2, s2 = type_expr (Env.add x fun_ty_scheme var_env', op_env) e2 in
+    let s = solve @@ constraints_of_subst_list [s1; s2] in
+    (T.subst_ty s ty2, s)
   | S.EFun (x, e) ->
     let arg_ty = Type.fresh_tyvar () in
     let ret_ty, s =

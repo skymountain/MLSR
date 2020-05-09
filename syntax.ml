@@ -45,6 +45,7 @@ and expr =
   | EFun of Id.t * expr
   | EApp of expr * expr
   | ELet of Id.t * expr * expr
+  | ELetRec of Id.t * Id.t * expr * expr
   | EHandle of expr * handler
   | EPair of expr * expr
   | EInl of expr
