@@ -30,13 +30,23 @@ let solve =
     | (ty, T.TyVar x) when not @@ T.TyvarSet.mem x (T.free_tyvars ty) ->
       T.TyvarMap.singleton x ty
     | TyFun (t11, t12), TyFun (t21, t22)
-    | TyProd (t11, t12), TyProd (t21, t22) ->
+    | TyProd (t11, t12), TyProd (t21, t22)
+    | TySum (t11, t12), TySum (t21, t22)
+      ->
       let s1 = solve (t11, t21) in
       let t12 = T.subst_ty s1 t12 in
       let t22 = T.subst_ty s1 t22 in
       let s2 = solve (t12, t22) in
       T.TyvarMap.union (fun _ _ _ -> assert false) s1 s2
-    | (_ as t1), (_ as t2) ->
+    | TyList t1, TyList t2 -> solve (t1, t2)
+    | ((  T.TyVar _
+        | T.TyBase _
+        | T.TyVarFixed _
+        | T.TyFun _
+        | T.TyProd _
+        | T.TySum _
+        | T.TyList _
+       ) as t1), (_ as t2) ->
       let msg = Printf.sprintf "Types \"%s\" and \"%s\" cannot be unified"
           (T.stringify_mono_ty t1) (T.stringify_mono_ty t2)
       in
@@ -46,7 +56,7 @@ let solve =
       let ty1 = T.subst_ty s ty1 in
       let ty2 = T.subst_ty s ty2 in
       let s' = solve (ty1, ty2) in
-      let s = T.subst_subst ~target:s ~by:s' in
+      let s = T.subst_subst ~by:s' ~target:s in
       T.TyvarMap.union (fun _ _ _ -> assert false) s s')
     T.TyvarMap.empty
 ;;
@@ -58,6 +68,13 @@ let rec type_expr ((var_env, op_env) as env) = function
       | None -> raise @@ Error (Printf.sprintf "Variable \"%s\" is not defined" x)
     end
   | S.EConst c -> (TyBase (type_const c), T.TyvarMap.empty)
+  | S.ELet (x, e1, e2) ->
+    let ty1, s1 = type_expr env e1 in
+    let var_env' = T.subst_tyenv s1 var_env in
+    let ty_scheme1 = T.closing var_env' ty1 in
+    let ty2, s2 = type_expr (Env.add x ty_scheme1 var_env', op_env) e2 in
+    let s = solve @@ constraints_of_subst_list [s1; s2] in
+    (T.subst_ty s ty2, s)
   | S.EFun (x, e) ->
     let arg_ty = Type.fresh_tyvar () in
     let ret_ty, s =
@@ -90,6 +107,72 @@ let rec type_expr ((var_env, op_env) as env) = function
     let c = constraints_of_subst_list [s1; s2; s3] in
     let s = solve c in
     (T.subst_ty s ret_ty, s)
+  | S.EInl e ->
+    let left_ty, s = type_expr env e in
+    let right_ty = T.fresh_tyvar () in
+    (T.TySum (left_ty, right_ty), s)
+  | S.EInr e ->
+    let right_ty, s = type_expr env e in
+    let left_ty = T.fresh_tyvar () in
+    (T.TySum (left_ty, right_ty), s)
+  | S.EList es ->
+    let elem_ty = T.fresh_tyvar () in
+    let c = List.fold_left (fun c e ->
+        let ty, s = type_expr env e in
+        (elem_ty, ty) :: ((constraints_of_subst s) @ c)) [] es
+    in
+    let s = solve c in
+    (T.TyList (T.subst_ty s elem_ty), s)
+  | S.EMatch (e, m) ->
+    let mty, sm = type_expr env e in
+    match m with
+    | MPair (x, y, e) ->
+      let x_ty = T.fresh_tyvar () in
+      let y_ty = T.fresh_tyvar () in
+      let cty, sc =
+        let var_env' =
+          Env.add x (T.tyscheme_of_mono x_ty) @@
+          Env.add y (T.tyscheme_of_mono y_ty) @@
+          var_env
+        in
+        type_expr (var_env', op_env) e
+      in
+      let c =
+        (T.TyProd (x_ty, y_ty), mty) ::
+        (constraints_of_subst_list [sm; sc])
+      in
+      let s = solve c in
+      (T.subst_ty s cty, s)
+    | MInj (x, ex, y, ey) ->
+      let x_ty = T.fresh_tyvar () in
+      let y_ty = T.fresh_tyvar () in
+      let x_cty, x_sc =
+        let var_env' = Env.add x (T.tyscheme_of_mono x_ty) var_env in
+        type_expr (var_env', op_env) ex
+      in
+      let y_cty, y_sc =
+        let var_env' = Env.add y (T.tyscheme_of_mono y_ty) var_env in
+        type_expr (var_env', op_env) ey
+      in
+      let c = (x_cty, y_cty) :: (T.TySum (x_ty, y_ty), mty) ::
+              (constraints_of_subst_list [sm; x_sc; y_sc]) in
+      let s = solve c in
+      (T.subst_ty s x_cty, s)
+    | MList (en, x, xs, ec) ->
+      let elem_ty = T.fresh_tyvar () in
+      let n_cty, n_sc = type_expr env en in
+      let c_cty, c_sc =
+        let var_env' =
+          Env.add x (T.tyscheme_of_mono elem_ty) @@
+          Env.add xs (T.tyscheme_of_mono (T.TyList elem_ty)) @@
+          var_env
+        in
+        type_expr (var_env', op_env) ec
+      in
+      let c = (n_cty, c_cty) :: (T.TyList elem_ty, mty) ::
+              (constraints_of_subst_list [sm; n_sc; c_sc]) in
+      let s = solve c in
+      (T.subst_ty s n_cty, s)
 
 and type_handler env ret_ty ops =
   let constraints =
@@ -125,7 +208,14 @@ and type_operation_clause (var_env, op_env) ret_ty
         Error "Type varaibles bound in an operation clause cannot be escaped"
 ;;
 
-let type_decl ((var_env, op_env) as env) = function
+let check_closed_tyenv (var_env, op_env) =
+  assert (T.TyvarSet.is_empty @@ T.free_tyvars_in_tyenv var_env);
+  assert (T.TyvarSet.is_empty @@ T.free_tyvars_in_openv op_env)
+;;
+
+let type_decl ((var_env, op_env) as env) =
+  check_closed_tyenv env;
+  function
   | S.DExpr e ->
     let ty, _ = type_expr env e in
     let ty_scheme = T.closing var_env ty in

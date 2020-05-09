@@ -44,8 +44,17 @@ and expr =
   | EConst of const
   | EFun of Id.t * expr
   | EApp of expr * expr
-  | EPair of expr * expr
+  | ELet of Id.t * expr * expr
   | EHandle of expr * handler
+  | EPair of expr * expr
+  | EInl of expr
+  | EInr of expr
+  | EList of expr list
+  | EMatch of expr * match_clause
+and match_clause =
+  | MPair of Id.t * Id.t * expr
+  | MInj of Id.t * expr * Id.t * expr
+  | MList of expr * Id.t * Id.t * expr
 [@@deriving show]
 ;;
 
@@ -59,6 +68,10 @@ type value =
   | VConst of const
   | VFun of cont
   | VPair of value * value
+  | VInl of value
+  | VInr of value
+  | VNil
+  | VCons of value * value
 and res =
   | RVal of value
   | RCont of OpId.t * value * cont
@@ -88,4 +101,9 @@ let rec stringify_value = function
   | VFun _ -> "<fun>"
   | VPair (v1, v2) ->
     "(" ^ stringify_value v1 ^ ", " ^ stringify_value v2 ^ ")"
+  | VInl v -> Printf.sprintf "inl %s" @@ stringify_value v
+  | VInr v -> Printf.sprintf "inr %s" @@ stringify_value v
+  | VNil -> "[]"
+  | VCons (v1, v2) ->
+    Printf.sprintf "(%s) :: %s" (stringify_value v1) (stringify_value v2)
 ;;

@@ -69,20 +69,34 @@ let make_ty_sig tyvars (dom_ty, codom_ty) =
   (T.TyvarSet.of_list ids, dom_ty, codom_ty)
 ;;
 
+let check_pattern_vars vars =
+  ignore @@
+    List.fold_left
+      (fun s x ->
+        if IdSet.mem x s then
+          let msg =
+            Printf.sprintf
+              "The same variable \"%s\" appears twice or more times in a pttern"
+              x
+          in
+          raise @@ S.Error msg
+        else
+          IdSet.add x s)
+      IdSet.empty vars
+;;
 
 %}
 
 %token <string> ID
 %token FUN
 %token RIGHT_ARROW DOUBLE_RIGHT_ARROW
-%token LET
-%token IN
+%token LET IN REC
 %token EQUAL
 %token DOUBLE_SEMICOLON
 %token LEFT_PAREN
 %token RIGHT_PAREN
 %token COMMA
-%token EFFECT HANDLE WITH RETURN
+%token MATCH EFFECT HANDLE WITH RETURN
 %token INT STRING BOOL FLOAT
 %token SINGLE_QUOTE COLON DOT
 %token VERTICAL_BAR
@@ -90,6 +104,8 @@ let make_ty_sig tyvars (dom_ty, codom_ty) =
 %token PLUS MINUS ASTERISK SLASH PERCENT CARET DOUBLE_VERTICAL_BAR DOUBLE_AMPERSAND
 %token LESS LESS_EQUAL GREAT GREAT_EQUAL LESS_GREAT
 %token SEMICOLON
+%token INL INR
+%token LEFT_SQ_BRACKET RIGHT_SQ_BRACKET DOUBLE_COLON
 %token EOF
 
 %token <int> LITERAL_INT
@@ -98,7 +114,10 @@ let make_ty_sig tyvars (dom_ty, codom_ty) =
 %token FALSE
 %token <string> LITERAL_STRING
 
+%nonassoc below_SEMICOLON
 %right SEMICOLON
+%nonassoc above_SEMICOLON
+%right DOUBLE_COLON
 %right DOUBLE_VERTICAL_BAR
 %right DOUBLE_AMPERSAND
 %left EQUAL LESS LESS_EQUAL GREAT GREAT_EQUAL LESS_GREAT
@@ -124,11 +143,29 @@ decl:
   | EFFECT; op_name = ID; COLON; t = ty_signature { S.DEff (op_name, t) }
 
 expr:
-  | LET; x = ID; EQUAL; e1 = expr; IN; e2 = expr
-    { S.EApp (S.EFun (x,e2), e1) }
-  | FUN; x = ID; RIGHT_ARROW; e = expr { S.EFun (x, e) }
+  | e1 = expr; SEMICOLON; e2 = expr { S.EApp (S.EApp (S.EId ";", e1), e2) }
+  | LET; x = ID; EQUAL; e1 = expr; IN; e2 = expr_below_semi
+    { S.ELet (x, e1, e2) }
+  | FUN; x = ID; RIGHT_ARROW; e = expr_below_semi { S.EFun (x, e) }
   | HANDLE; e = expr; WITH; h = handler_expr { S.EHandle (e, h) }
+  | LEFT_PAREN; f = expr; COMMA; s = expr; RIGHT_PAREN { S.EPair (f, s) }
+  | INL; e = binary_op_expr { S.EInl e }
+  | INR; e = binary_op_expr { S.EInr e }
+  | LEFT_SQ_BRACKET; es = list_expr; RIGHT_SQ_BRACKET
+    { S.EList es }
+  | MATCH; e = expr; WITH; m = match_clause { EMatch (e, m) }
   | e = binary_op_expr { e }
+
+expr_below_semi:
+  | e = expr { e } %prec below_SEMICOLON
+
+list_expr:
+  | { [] }
+  | e = expr { [e] }
+  | e = list_elem_expr; SEMICOLON; es = list_expr { e::es }
+
+list_elem_expr:
+  | e = expr { e } %prec above_SEMICOLON
 
 binary_op_expr:
   | e1 = binary_op_expr; op = binary_op; e2 = binary_op_expr
@@ -141,7 +178,6 @@ app_expr:
 
 simple_expr:
   | x = ID { S.EId x }
-  | LEFT_PAREN; f = expr; COMMA; s = expr; RIGHT_PAREN { S.EPair (f, s) }
   | c = const_expr { S.EConst c }
   | LEFT_PAREN; e = expr; RIGHT_PAREN { e }
 
@@ -184,7 +220,25 @@ handler_expr:
 handler_clause:
   | RETURN; x = ID; RIGHT_ARROW; e = expr { Return (x, e) }
   | op_name = ID; op_arg_var = ID; op_cont_var = ID; RIGHT_ARROW; op_body = expr
-    { let open S in Operation { op_name; op_arg_var; op_cont_var; op_body } }
+    {
+      check_pattern_vars [op_arg_var; op_cont_var];
+      let open S in Operation { op_name; op_arg_var; op_cont_var; op_body }
+    }
+
+match_clause:
+  | LEFT_PAREN; x = ID; COMMA; y = ID; RIGHT_PAREN; RIGHT_ARROW; e = expr_below_semi
+    {
+      check_pattern_vars [x; y];
+      S.MPair (x, y, e)
+    }
+  | INL; x = ID; RIGHT_ARROW; ex = expr; VERTICAL_BAR; INR; y = ID; RIGHT_ARROW; ey = expr_below_semi
+    { S.MInj (x, ex, y, ey) }
+  | LEFT_SQ_BRACKET; RIGHT_SQ_BRACKET; RIGHT_ARROW; en = expr; VERTICAL_BAR;
+    x = ID; DOUBLE_COLON; xs = ID; RIGHT_ARROW; ec = expr_below_semi
+    {
+      check_pattern_vars [x; xs];
+      S.MList (en, x, xs, ec)
+    }
 
 %inline binary_op:
   | PLUS { "+" }
@@ -201,7 +255,7 @@ handler_clause:
   | LESS_EQUAL { "<=" }
   | GREAT { ">" }
   | GREAT_EQUAL { ">=" }
-  | SEMICOLON { ";" }
+  | DOUBLE_COLON { "::" }
 
 ty_signature:
   | tyvars = tyvar+; DOT; ty_sig = ty_signature_mono

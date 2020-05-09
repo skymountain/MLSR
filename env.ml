@@ -18,3 +18,6 @@ let add = Env.add
 
 let fold = Env.fold
 ;;
+
+let map = Env.map
+;;

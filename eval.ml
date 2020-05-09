@@ -21,6 +21,9 @@ let val_of_res = function
 let rec eval_expr ((var_env, op_env) as env) = function
   | EId x -> return @@ Env.find x var_env
   | EConst c -> return @@ VConst c
+  | ELet (x, e1, e2) ->
+    let* v1 = eval_expr env e1 in
+    eval_expr (Env.add x v1 var_env, op_env) e2
   | EFun (x, e) ->
     return @@ VFun (fun v -> eval_expr (Env.add x v var_env, op_env) e)
   | EApp (e1, e2) ->
@@ -33,16 +36,47 @@ let rec eval_expr ((var_env, op_env) as env) = function
           "Constant \"" ^ (Syntax.stringify_const c) ^ "\" cannot be applied"
         in
         raise @@ Error msg
-      | VPair _ ->
-        let msg = "Pairs cannot be applied" in
-        raise @@ Error msg
       | VFun f -> f v2
+      | VPair _ | VInl _ | VInr _ | VNil | VCons _ ->
+        let msg =
+          Printf.sprintf "\"%s\" cannot be applied" @@ stringify_value v1
+        in
+        raise @@ Error msg
     end
+  | EHandle (e, (ret, ops)) -> handle env ret ops @@ eval_expr env e
   | EPair (e1, e2) ->
     let* v1 = eval_expr env e1 in
     let* v2 = eval_expr env e2 in
     return @@ VPair (v1, v2)
-  | EHandle (e, (ret, ops)) -> handle env ret ops @@ eval_expr env e
+  | EInl e -> let* v = eval_expr env e in return @@ VInl v
+  | EInr e -> let* v = eval_expr env e in return @@ VInr v
+  | EList es -> eval_expr_list env [] es
+  | EMatch (e, m) ->
+    let* v = eval_expr env e in
+    match v, m with
+    | VPair (v1, v2), MPair (x, y, e) ->
+      let var_env' =
+        Env.add x v1 @@
+        Env.add y v2 @@
+        var_env
+      in
+      eval_expr (var_env', op_env) e
+    | VInl v, MInj (x, e, _, _) -> eval_expr (Env.add x v var_env, op_env) e
+    | VInr v, MInj (_, _, y, e) -> eval_expr (Env.add y v var_env, op_env) e
+    | VNil, MList (e, _, _, _) -> eval_expr env e
+    | VCons (v, vs), MList (_, x, xs, e) ->
+      let var_env' =
+        Env.add x v @@
+        Env.add xs vs @@
+        var_env
+      in
+      eval_expr (var_env', op_env) e
+    | _, _ ->
+      raise @@ Error "Found mismatch between a matched value and a pattern"
+
+and eval_expr_list env vs = function
+  | [] -> return @@ List.fold_left (fun acc v -> VCons (v, acc)) VNil vs
+  | e::es -> let* v = eval_expr env e in eval_expr_list env (v::vs) es
 
 and handle ((var_env, op_env) as env) ret ops = function
   | RVal v -> let x, body = ret in eval_expr (Env.add x v var_env, op_env) body

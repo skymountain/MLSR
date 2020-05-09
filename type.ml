@@ -30,6 +30,8 @@ type mono_ty =
   | TyVarFixed of int
   | TyFun of mono_ty * mono_ty
   | TyProd of mono_ty * mono_ty
+  | TySum of mono_ty * mono_ty
+  | TyList of mono_ty
 [@@deriving show]
 ;;
 
@@ -63,15 +65,17 @@ let tyscheme_of_mono ty = (TyvarSet.empty, ty)
 let rec free_tyvars = function
   | TyBase _ -> TyvarSet.empty
   | TyVar x | TyVarFixed x -> TyvarSet.singleton x
-  | TyFun (t1, t2) | TyProd (t1, t2) ->
+  | TyFun (t1, t2) | TyProd (t1, t2) | TySum (t1, t2) ->
     TyvarSet.union (free_tyvars t1) (free_tyvars t2)
+  | TyList t -> free_tyvars t
 ;;
 
 let rec free_fixed_tyvars = function
   | TyBase _ | TyVar _ -> TyvarSet.empty
   | TyVarFixed x -> TyvarSet.singleton x
-  | TyFun (t1, t2) | TyProd (t1, t2) ->
+  | TyFun (t1, t2) | TyProd (t1, t2) | TySum (t1, t2) ->
     TyvarSet.union (free_fixed_tyvars t1) (free_fixed_tyvars t2)
+  | TyList t -> free_fixed_tyvars t
 ;;
 
 let check_validity_of_ty_scheme (tyvars, ty) =
@@ -111,6 +115,14 @@ let free_fixed_tyvars_in_tyenv =
   _free_tyvars_in_tyenv free_fixed_tyvars_in_ty_scheme
 ;;
 
+let free_tyvars_in_openv openv =
+  OpMap.fold
+    (fun _ (tyvars, dom, codom) set ->
+       let dom_codom = TyvarSet.union (free_tyvars dom) (free_tyvars codom) in
+       TyvarSet.union set (TyvarSet.diff dom_codom tyvars))
+    openv TyvarSet.empty
+;;
+
 let free_tyvars_in_subst s =
   TyvarMap.fold (fun _ ty set ->
       TyvarSet.union set @@ free_tyvars ty)
@@ -133,14 +145,32 @@ let rec subst_ty s ty = match ty with
   | TyBase _ -> ty
   | TyFun (arg, ret) -> TyFun (subst_ty s arg, subst_ty s ret)
   | TyProd (fs, sn) -> TyProd (subst_ty s fs, subst_ty s sn)
+  | TySum (l, r) -> TySum (subst_ty s l, subst_ty s r)
+  | TyList t -> TyList (subst_ty s t)
 ;;
 
-let subst_subst ~target ~by =
+let subst_subst ~by ~target =
   let s = TyvarMap.map (fun ty -> subst_ty by ty) target in
   check_validity_of_subst s;
   s
 ;;
 
+let subst_tyenv s tyenv =
+  let dom =
+    TyvarSet.of_list @@ TyvarMap.fold (fun x _ l -> x::l) s []
+  in
+  let codom =
+    TyvarMap.fold
+      (fun _ ty set -> TyvarSet.union (free_tyvars ty) set)
+      s TyvarSet.empty
+  in
+  Env.map
+    (fun (tyvars, ty) ->
+       assert (TyvarSet.is_empty @@ TyvarSet.inter tyvars dom);
+       assert (TyvarSet.is_empty @@ TyvarSet.inter tyvars codom);
+       (tyvars, subst_ty s ty))
+    tyenv
+;;
 
 let renaming_subst tyvars tyvar_gen =
   TyvarSet.fold
@@ -172,19 +202,19 @@ let rec stringify_ty bound_m free_m =
     | None -> TyvarMap.find x free_m
     | Some letter -> letter
   in
+  let self ty = stringify_ty bound_m free_m ty in
   function
   | TyVar x ->
     Printf.sprintf "'%s" @@ find x
   | TyVarFixed x -> Printf.sprintf "@%s" @@ find x
   | TyBase b -> stringify_bty b
   | TyFun (arg, ret) ->
-    Printf.sprintf "(%s) -> (%s)"
-      (stringify_ty bound_m free_m arg)
-      (stringify_ty bound_m free_m ret)
+    Printf.sprintf "(%s) -> (%s)" (self arg) (self ret)
   | TyProd (f, s) ->
-    Printf.sprintf "(%s) * (%s)"
-      (stringify_ty bound_m free_m f)
-      (stringify_ty bound_m free_m s)
+    Printf.sprintf "(%s) * (%s)" (self f) (self s)
+  | TySum (l, r) ->
+    Printf.sprintf "(%s) + (%s)" (self l) (self r)
+  | TyList t -> Printf.sprintf "(%s) list" @@ self t
 ;;
 
 let stringify_ty_scheme =

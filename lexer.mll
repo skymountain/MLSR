@@ -38,14 +38,21 @@ rule main = parse
   | "->"    { RIGHT_ARROW }
   | "let"   { LET }
   | "in"    { IN }
+  | "rec"   { REC }
   | "effect" { EFFECT }
   | "handle" { HANDLE }
   | "with"   { WITH }
   | "return" { RETURN }
+  | "inl"    { INL }
+  | "inr"    { INR }
+  | "match" { MATCH }
+  | "with"  { WITH }
   | '='     { EQUAL }
   | '*'     { ASTERISK }
   | '('     { LEFT_PAREN }
   | ')'     { RIGHT_PAREN }
+  | '['     { LEFT_SQ_BRACKET }
+  | ']'     { RIGHT_SQ_BRACKET }
   | ','     { COMMA }
   | '\''    { SINGLE_QUOTE }
   | ':'     { COLON }
@@ -63,6 +70,7 @@ rule main = parse
   | '<'     { LESS }
   | '>'     { GREAT }
   | ";;"    { DOUBLE_SEMICOLON }
+  | "::"    { DOUBLE_COLON }
   | "&&"    { DOUBLE_AMPERSAND }
   | "||"    { DOUBLE_VERTICAL_BAR }
   | "<="    { LESS_EQUAL }
