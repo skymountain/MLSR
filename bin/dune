@@ -1,0 +1,9 @@
+(executable
+  (name main)
+  (libraries mlsr)
+)
+
+(install
+  (section bin)
+  (files (main.exe as mlsr))
+)

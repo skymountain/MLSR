@@ -1,0 +1,11 @@
+(library
+  (name mlsr)
+  (public_name mlsr)
+  (preprocess (pps ppx_deriving.show ppx_deriving.ord))
+)
+
+(ocamllex lexer)
+(menhir
+  (flags --fixed-exception --explain)
+  (modules parser)
+)

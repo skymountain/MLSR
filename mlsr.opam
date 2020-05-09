@@ -1,0 +1,17 @@
+opam-version: "2.0"
+version: "0.1"
+maintainer: "ryukilon@gmail.com"
+authors: ["Taro Sekiyama"]
+homepage: "https://github.com/skymountain/lambda_sr"
+bug-reports: "https://github.com/skymountain/lambda_sr/issues"
+dev-repo: "git+https://github.com/skymountain/lambda_sr.git"
+license: "MIT"
+build: [
+  [ "dune" "build" "-p" name "-j" jobs ]
+]
+depends: [
+  "ocaml" { >= "4.08" }
+  "dune" { >= "2.5" }
+  "menhir"
+  "ppx_deriving" { >= "4.4.1" }
+]
