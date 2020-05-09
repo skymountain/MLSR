@@ -1,6 +1,9 @@
 exception Error of string
 ;;
 
+let err s = raise @@ Error s
+;;
+
 module Id = struct
   type t = string
   [@@deriving show]

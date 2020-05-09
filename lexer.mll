@@ -60,7 +60,7 @@ rule main = parse
   | ':'      { COLON }
   | '.'      { DOT }
   | '|'      { VERTICAL_BAR }
-  | '        {'     { LEFT_BRACE }
+  | '{'      { LEFT_BRACE }
   | '}'      { RIGHT_BRACE }
   | '+'      { PLUS }
   | '-'      { MINUS }
@@ -82,8 +82,7 @@ rule main = parse
   | int      { LITERAL_INT (int_of_string (Lexing.lexeme lexbuf)) }
   | float    { LITERAL_FLOAT (float_of_string (Lexing.lexeme lexbuf)) }
   | id       { ID (Lexing.lexeme lexbuf) }
-  | _        { let msg = "Unexpected character: " ^ Lexing.lexeme lexbuf in
-              raise (Syntax.Error msg) }
+  | _        { Syntax.err @@ "Unexpected character: " ^ Lexing.lexeme lexbuf }
   | eof      { EOF }
 
 and read_string buf = parse
@@ -92,4 +91,4 @@ and read_string buf = parse
   | '\\' '"'     { Buffer.add_char buf '"'; read_string buf lexbuf }
   | [^ '"' '\\'] { Buffer.add_string buf (Lexing.lexeme lexbuf);
                    read_string buf lexbuf }
-  | eof          { raise (Syntax.Error "String is not terminated") }
+  | eof          { Syntax.err "String is not terminated with '\"'" }

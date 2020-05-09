@@ -32,13 +32,11 @@ let lookup_bound_tyvar m tyvar =
   match IdMap.find_opt tyvar m with
   | Some x -> x
   | None ->
-     let msg =
+     S.err @@
        Printf.sprintf
          "Type variable \"%s\" is not bound in the type signature of \
           the effect operation"
          tyvar
-     in
-     raise @@ S.Error msg
 ;;
 
 (* let lookup_or_assign_tyvar tyvar = *)
@@ -54,8 +52,7 @@ let make_tyvar_env tyvars =
     | [] -> (List.rev ids, m)
     | x::xs ->
        if IdMap.mem x m then
-         let msg = "Type variable \"" ^ x ^ "\" is quantified twice" in
-         raise @@ S.Error msg
+         S.err @@ "Type variable \"" ^ x ^ "\" is quantified twice"
        else
          let ids' = cur_id :: ids in
          iter (IdMap.add x cur_id m) (cur_id+1) ids' xs
@@ -79,12 +76,10 @@ let check_pattern_vars vars =
     List.fold_left
       (fun s x ->
         if IdSet.mem x s then
-          let msg =
+          S.err @@
             Printf.sprintf
               "The same variable \"%s\" appears twice or more times in a pttern"
               x
-          in
-          raise @@ S.Error msg
         else
           IdSet.add x s)
       IdSet.empty vars
@@ -210,8 +205,7 @@ handler_expr:
         List.fold_left
           (fun acc -> function
             | Return _ when (Option.is_some @@ fst acc) ->
-               let msg = "Return clauses have to be single in a handler" in
-               raise @@ S.Error msg
+               S.err "Return clauses have to be single in a handler"
             | Return (x, e) -> (Some (x, e), snd acc)
             | Operation op -> (fst acc, op :: (snd acc)))
           (None, []) c
@@ -223,10 +217,11 @@ handler_expr:
         List.fold_left
           (fun s { S.op_name; _ } ->
             if IdSet.mem op_name s then
-              let msg = "Operation clauses with the same name \"" ^ op_name ^
-                          "\" have to be signle in a handler"
-              in
-              raise @@ S.Error msg
+              S.err @@
+                Printf.sprintf
+                  "Operation clauses with the same name \"%s\" have to be \
+                   signle in a handler"
+                  op_name
             else IdSet.add op_name s)
           IdSet.empty ops;
       (ret, ops)

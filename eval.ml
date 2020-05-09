@@ -4,6 +4,9 @@ open Syntax
 exception Error of string
 ;;
 
+let err s = raise @@ Error s
+;;
+
 let rec ( let* ) res f =
   match res with
   | RVal v -> f v
@@ -15,7 +18,7 @@ let return v = RVal v
 
 let val_of_res = function
   | RVal v -> v
-  | RCont _ -> raise @@ Error "Uncaught continuation"
+  | RCont _ -> err "Uncaught continuation"
 ;;
 
 let rec eval_expr ((var_env, op_env) as env) = function
@@ -44,16 +47,12 @@ let rec eval_expr ((var_env, op_env) as env) = function
       let* v2 = eval_expr env e2 in
       match v1 with
       | VConst c ->
-        let msg =
+        err @@
           "Constant \"" ^ (Syntax.stringify_const c) ^ "\" cannot be applied"
-        in
-        raise @@ Error msg
       | VFun f -> f v2
       | VPair _ | VInl _ | VInr _ | VNil | VCons _ ->
-        let msg =
+        err @@
           Printf.sprintf "\"%s\" cannot be applied" @@ stringify_value v1
-        in
-        raise @@ Error msg
     end
   | EHandle (e, (ret, ops)) -> handle env ret ops @@ eval_expr env e
   | EPair (e1, e2) ->
@@ -84,7 +83,7 @@ let rec eval_expr ((var_env, op_env) as env) = function
       in
       eval_expr (var_env', op_env) e
     | _, _ ->
-      raise @@ Error "Found mismatch between a matched value and a pattern"
+      err "Found mismatch between a matched value and a pattern"
 
 and eval_expr_list env vs = function
   | [] -> return @@ List.fold_left (fun acc v -> VCons (v, acc)) VNil vs

@@ -4,6 +4,9 @@ module T = Type
 exception Error of string
 ;;
 
+let err s = raise @@ Error s
+;;
+
 let type_const = function
   | S.CInt _ -> T.TyInt
   | S.CBool _ -> T.TyBool
@@ -48,10 +51,8 @@ let solve =
         | T.TySum _
         | T.TyList _
        ) as t1), (_ as t2) ->
-      let msg = Printf.sprintf "Types \"%s\" and \"%s\" cannot be unified"
-          (T.stringify_mono_ty t1) (T.stringify_mono_ty t2)
-      in
-      raise @@ Error msg
+      err @@ Printf.sprintf "Types \"%s\" and \"%s\" cannot be unified"
+        (T.stringify_mono_ty t1) (T.stringify_mono_ty t2)
   in
   List.fold_left (fun s (ty1, ty2) ->
       let ty1 = T.subst_ty s ty1 in
@@ -66,8 +67,7 @@ let rec type_expr ((var_env, op_env) as env) = function
   | S.EId x -> begin
       match Env.find_opt x var_env with
       | Some ty_scheme -> (T.instantiate ty_scheme, T.TyvarMap.empty)
-      | None -> raise @@
-        Error (Printf.sprintf "Variable \"%s\" is not defined" x)
+      | None -> err @@ Printf.sprintf "Variable \"%s\" is not defined" x
     end
   | S.EConst c -> (TyBase (type_const c), T.TyvarMap.empty)
   | S.ELet (x, e1, e2) ->
@@ -201,8 +201,7 @@ and type_operation_clause (var_env, op_env) ret_ty
     { op_name; op_arg_var; op_cont_var; op_body } =
     match T.OpMap.find_opt op_name op_env with
     | None ->
-      raise @@ Error
-        (Printf.sprintf "Effect operation \"%s\" is not declared" op_name)
+      err @@ Printf.sprintf "Effect operation \"%s\" is not declared" op_name
     | Some ty_sig ->
       let fixed_tyvars, dom_ty, codom_ty = T.instantiate_ty_sig ty_sig in
       let arg_ty = T.tyscheme_of_mono dom_ty in
@@ -221,8 +220,7 @@ and type_operation_clause (var_env, op_env) ret_ty
       if T.TyvarSet.is_empty free_fixed_tyvars then
         (ret_ty, op_body_ty) :: (constraints_of_subst s)
       else
-        raise @@
-          Error "Type varaibles bound in an operation clause cannot be escaped"
+        err "Type varaibles bound in an operation clause cannot be escaped"
 ;;
 
 let signature_restriction =
@@ -296,11 +294,10 @@ let type_decl ((var_env, op_env) as env) =
   | S.DEff (op_name, ((tyvars, dom_ty, codom_ty) as ty_sig)) ->
     match signature_restriction ty_sig with
     | Some blame ->
-      let msg = Printf.sprintf
+      err @@
+        Printf.sprintf
           "The type siganture does not follow the signature restriction on %s"
           blame
-      in
-      raise @@ Error msg
     | None ->
       let msg = Printf.sprintf "effect %s is defined" op_name in
       let ty_scheme = T.closing var_env @@
