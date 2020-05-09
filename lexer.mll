@@ -49,6 +49,9 @@ rule main = parse
   | "inr"    { INR }
   | "match"  { MATCH }
   | "with"   { WITH }
+  | "if"     { IF }
+  | "then"   { THEN }
+  | "else"   { ELSE }
   | '='      { EQUAL }
   | '('      { LEFT_PAREN }
   | ')'      { RIGHT_PAREN }

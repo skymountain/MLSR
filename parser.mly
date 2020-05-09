@@ -96,6 +96,7 @@ let check_pattern_vars vars =
 %token LEFT_PAREN
 %token RIGHT_PAREN
 %token COMMA
+%token IF THEN ELSE
 %token MATCH EFFECT HANDLE WITH RETURN
 %token INT STRING BOOL FLOAT LIST UNIT
 %token SINGLE_QUOTE COLON DOT
@@ -163,18 +164,20 @@ expr:
   | INL; e = binary_op_expr { S.EInl e }
   | INR; e = binary_op_expr { S.EInr e }
   | MATCH; e = expr; WITH; m = match_clause { EMatch (e, m) }
+  | IF; ce = expr; THEN; te = expr; ELSE; ee = expr_above_semi
+    { S.EIf (ce, te, ee) }
   | e = binary_op_expr { e }
 
 expr_below_semi:
   | e = expr { e } %prec below_SEMICOLON
 
+expr_above_semi:
+  | e = expr { e } %prec above_SEMICOLON
+
 list_expr:
   | { [] }
   | e = expr { [e] }
-  | e = list_elem_expr; SEMICOLON; es = list_expr { e::es }
-
-list_elem_expr:
-  | e = expr { e } %prec above_SEMICOLON
+  | e = expr_above_semi; SEMICOLON; es = list_expr { e::es }
 
 binary_op_expr:
   | e1 = binary_op_expr; op = binary_op; e2 = binary_op_expr

@@ -62,7 +62,7 @@ let rec eval_expr ((var_env, op_env) as env) = function
   | EInl e -> let* v = eval_expr env e in return @@ VInl v
   | EInr e -> let* v = eval_expr env e in return @@ VInr v
   | EList es -> eval_expr_list env [] es
-  | EMatch (e, m) ->
+  | EMatch (e, m) -> begin
     let* v = eval_expr env e in
     match v, m with
     | VPair (v1, v2), MPair (x, y, e) ->
@@ -84,6 +84,14 @@ let rec eval_expr ((var_env, op_env) as env) = function
       eval_expr (var_env', op_env) e
     | _, _ ->
       err "Found mismatch between a matched value and a pattern"
+  end
+  | EIf (ce, te, ee) -> begin
+    let* v = eval_expr env ce in
+    match v with
+    | VConst (CBool b) ->
+      eval_expr env @@ if b then te else ee
+    | _ -> err "Conditional expressions have to be Booleans"
+  end
 
 and eval_expr_list env vs = function
   | [] -> return @@ List.fold_left (fun acc v -> VCons (v, acc)) VNil vs

@@ -142,7 +142,7 @@ let rec type_expr ((var_env, op_env) as env) = function
     in
     let s = solve c in
     (T.TyList (T.subst_ty s elem_ty), s)
-  | S.EMatch (e, m) ->
+  | S.EMatch (e, m) -> begin
     let mty, sm = type_expr env e in
     match m with
     | MPair (x, y, e) ->
@@ -192,6 +192,18 @@ let rec type_expr ((var_env, op_env) as env) = function
               (constraints_of_subst_list [sm; n_sc; c_sc]) in
       let s = solve c in
       (T.subst_ty s n_cty, s)
+  end
+  | S.EIf (ce, te, ee) -> begin
+    let cty, sc = type_expr env ce in
+    let tty, st = type_expr env te in
+    let ety, se = type_expr env ee in
+    let s = solve @@
+      (cty, TyBase TyBool) ::
+      (tty, ety) ::
+      (constraints_of_subst_list [sc; st; se])
+    in
+    (T.subst_ty s tty, s)
+  end
 
 and type_handler env ret_ty ops =
   let constraints = List.map (type_operation_clause env ret_ty) ops in

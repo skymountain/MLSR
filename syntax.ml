@@ -56,6 +56,7 @@ and expr =
   | EInr of expr
   | EList of expr list
   | EMatch of expr * match_clause
+  | EIf of expr * expr * expr
 and match_clause =
   | MPair of Id.t * Id.t * expr
   | MInj of Id.t * expr * Id.t * expr
