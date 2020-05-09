@@ -98,17 +98,6 @@ let env, tyenv =
       pair_env
       [("+", (+)); ("-", (-)); ("*", ( * )); ("/", (/)); ("%", (mod))]
   in
-  (* ops of int -> int -> bool *)
-  let pair_env = add_const_ops
-      (fun op -> function
-           [CInt i1; CInt i2] -> some @@ CBool (op i1 i2) | _ -> none)
-      (fun x ->
-         raise_err @@ "Operator \"" ^ x ^ "\" can be applied only to integers")
-      (tyscheme_of_mono @@
-       TyFun (TyBase TyInt, TyFun (TyBase TyInt, TyBase TyBool)))
-      pair_env
-      [("<", (<)); ("<=", (<=)); (">", (>)); (">=", (>=))]
-  in
   (* ops of bool -> bool -> bool *)
   let pair_env = add_const_ops
       (fun op -> function
@@ -175,6 +164,7 @@ let env, tyenv =
   in
   (* comparison operators *)
   let pair_env =
+    let op f v1 v2 = VConst (CBool (f v1 v2)) in
     let tyvar0 = fresh_tyvar () in
     add_ops
       (fun op -> function [v1; v2] -> (try some @@ op v1 v2 with _ -> none)
@@ -184,8 +174,13 @@ let env, tyenv =
       (closing Env.empty @@
        TyFun (tyvar0, TyFun (tyvar0, TyBase TyBool)))
       pair_env
-      ["=",  (fun v1 v2 -> VConst (CBool (v1 = v2)));
-       "<>", (fun v1 v2 -> VConst (CBool (v1 <> v2)));]
+      ["=",  op (=);
+       "<>", op (<>);
+       "<",  op (<);
+       "<=", op (<=);
+       ">",  op (>);
+       ">=", op (>=);
+      ]
   in
   (* sequential composition *)
   let pair_env =
