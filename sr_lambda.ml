@@ -88,21 +88,36 @@ let env, tyenv =
       pair_env
       [("^", (^))]
   in
+  (* cons *)
+  let pair_env =
+    let tyvar0 = fresh_tyvar () in
+    add_bin_ops
+      (fun _ -> assert false)
+      (fun op v1 v2 -> try some @@ op v1 v2 with _ -> none)
+      (closing Env.empty @@ TyFun (tyvar0, TyFun (TyList tyvar0, TyList tyvar0)))
+      pair_env
+      ["::",  (fun v1 v2 -> VCons (v1, v2))]
+  in
   (* comparison operators *)
-  let pair_env = add_bin_ops
+  let pair_env =
+    let tyvar0 = fresh_tyvar () in
+    add_bin_ops
       (fun x ->
          raise_err @@ "Incomparable objects were comapred by \"" ^ x ^ "\"")
       (fun op v1 v2 -> try some @@ op v1 v2 with _ -> none)
-      (closing Env.empty @@ TyFun (TyVar 0, TyFun (TyVar 0, TyBase TyBool)))
+      (closing Env.empty @@ TyFun (tyvar0, TyFun (tyvar0, TyBase TyBool)))
       pair_env
       ["=",  (fun v1 v2 -> VConst (CBool (v1 = v2)));
        "<>", (fun v1 v2 -> VConst (CBool (v1 <> v2)));]
   in
   (* sequential composition *)
-  let pair_env = add_bin_ops
+  let pair_env =
+    let tyvar0 = fresh_tyvar () in
+    let tyvar1 = fresh_tyvar () in
+    add_bin_ops
       (fun _ -> assert false)
       (fun op v1 v2 -> some @@ op v1 v2)
-      (closing Env.empty @@ TyFun (TyVar 0, TyFun (TyVar 1, TyVar 1)))
+      (closing Env.empty @@ TyFun (tyvar0, TyFun (tyvar1, tyvar1)))
       pair_env
       [";", (fun _ v2 -> v2)]
   in
