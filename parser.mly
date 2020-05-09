@@ -157,8 +157,6 @@ expr:
   | LEFT_PAREN; f = expr; COMMA; s = expr; RIGHT_PAREN { S.EPair (f, s) }
   | INL; e = binary_op_expr { S.EInl e }
   | INR; e = binary_op_expr { S.EInr e }
-  | LEFT_SQ_BRACKET; es = list_expr; RIGHT_SQ_BRACKET
-    { S.EList es }
   | MATCH; e = expr; WITH; m = match_clause { EMatch (e, m) }
   | e = binary_op_expr { e }
 
@@ -185,6 +183,7 @@ app_expr:
 simple_expr:
   | x = ID { S.EId x }
   | c = const_expr { S.EConst c }
+  | LEFT_SQ_BRACKET; es = list_expr; RIGHT_SQ_BRACKET { S.EList es }
   | LEFT_PAREN; e = expr; RIGHT_PAREN { e }
 
 const_expr:
