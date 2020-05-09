@@ -31,6 +31,7 @@ rule main = parse
   | "int"   { INT }
   | "string" { STRING }
   | "bool"  { BOOL }
+  | "list"  { LIST }
   | "float" { FLOAT }
   | "true"  { TRUE }
   | "false" { FALSE }

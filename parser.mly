@@ -101,7 +101,7 @@ let check_pattern_vars vars =
 %token RIGHT_PAREN
 %token COMMA
 %token MATCH EFFECT HANDLE WITH RETURN
-%token INT STRING BOOL FLOAT
+%token INT STRING BOOL FLOAT LIST
 %token SINGLE_QUOTE COLON DOT
 %token VERTICAL_BAR
 %token LEFT_BRACE RIGHT_BRACE
@@ -128,6 +128,8 @@ let check_pattern_vars vars =
 %right CARET
 %left PLUS MINUS
 %left ASTERISK SLASH PERCENT
+%nonassoc LIST
+%right RIGHT_ARROW
 
 
 %start <Syntax.decl option> main
@@ -283,18 +285,16 @@ ty_signature_mono:
     { (dom_ty, codom_ty) }
 
 ty_mono:
-  | t1 = ty_mono; ASTERISK; t2 = ty_fun
-    { fun l -> T.TyProd (t1 l, t2 l) }
-  | t = ty_fun { t }
-
-ty_fun:
-  | t1 = ty_simple; RIGHT_ARROW; t2 = ty_fun
+  | t1 = ty_mono; RIGHT_ARROW; t2 = ty_mono
     { fun l -> T.TyFun (t1 l, t2 l) }
-  | t = ty_simple { t }
-
-ty_simple:
+  | t1 = ty_mono; ASTERISK; t2 = ty_mono
+    { fun l -> T.TyProd (t1 l, t2 l) }
+  | t1 = ty_mono; PLUS; t2 = ty_mono
+    { fun l -> T.TySum (t1 l, t2 l) }
+  | t = ty_mono; LIST { fun l -> T.TyList (t l) }
   | t = ty_const { fun _ -> T.TyBase t }
   | var = tyvar { fun l -> T.TyVar (l var) }
+  | LEFT_PAREN; t = ty_mono; RIGHT_PAREN { t }
 
 ty_const:
   | INT { T.TyInt }
