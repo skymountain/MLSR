@@ -4,18 +4,21 @@ let rec read_eval_print lexbuf env tyenv =
     read_eval_print lexbuf env tyenv
   in
   try
+    print_string "# ";
     flush stderr;
     flush stdout;
     match Parser.main Lexer.main lexbuf with
     | None -> print_endline "Termianted."
     | Some d ->
-      let tyenv', msg = Typing.type_decl tyenv d in
-      print_endline msg;
+      let tyenv', typing_msg = Typing.type_decl tyenv d in
       let env', v_opt = Eval.eval_decl env d in
-      Option.fold
-        ~none:()
-        ~some:(fun v -> print_endline @@ Syntax.stringify_value v)
-        v_opt;
+      print_endline @@
+        Option.fold v_opt
+          ~none:typing_msg
+          ~some:(fun v ->
+              Printf.sprintf "val %s = %s"
+                typing_msg
+                (Syntax.stringify_value v));
       read_eval_print lexbuf env' tyenv'
   with
   | Syntax.Error msg -> resume @@ "Syntax error: " ^ msg

@@ -301,7 +301,7 @@ let type_decl ((var_env, op_env) as env) =
       in
       raise @@ Error msg
     | None ->
-      let msg = Printf.sprintf "Effect operation \"%s\" is defined" op_name in
+      let msg = Printf.sprintf "effect %s is defined" op_name in
       let ty_scheme = T.closing var_env @@
         T.instantiate (tyvars, T.TyFun (dom_ty, codom_ty))
       in
