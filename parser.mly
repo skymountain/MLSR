@@ -144,7 +144,7 @@ top_level:
 decl:
   | e = expr { DExpr e }
   | LET; x = ID; params = param_list; EQUAL; e = expr
-    { DLet (x, fun_with_params params e) }
+    { S.DLet (x, fun_with_params params e) }
   | LET; REC; x = ID; y = ID; params = param_list; EQUAL; e = expr
     { S.DLet (x, S.ELetRec (x, y, fun_with_params params e, S.EId x)) }
   | EFFECT; op_name = ID; COLON; t = ty_signature { S.DEff (op_name, t) }
