@@ -79,7 +79,7 @@ let rec free_fixed_tyvars = function
 ;;
 
 let check_validity_of_ty_scheme (tyvars, ty) =
-  assert (TyvarSet.is_empty @@ TyvarSet.inter tyvars (free_fixed_tyvars ty))
+  assert (TyvarSet.disjoint tyvars (free_fixed_tyvars ty))
 ;;
 
 let check_validity_of_subst s =
@@ -166,8 +166,8 @@ let subst_tyenv s tyenv =
   in
   Env.map
     (fun (tyvars, ty) ->
-       assert (TyvarSet.is_empty @@ TyvarSet.inter tyvars dom);
-       assert (TyvarSet.is_empty @@ TyvarSet.inter tyvars codom);
+       assert (TyvarSet.disjoint tyvars dom);
+       assert (TyvarSet.disjoint tyvars codom);
        (tyvars, subst_ty s ty))
     tyenv
 ;;
