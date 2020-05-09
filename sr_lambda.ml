@@ -25,7 +25,12 @@ let rec read_eval_print lexbuf env tyenv =
   | Syntax.Error msg -> resume @@ "Syntax error: " ^ msg
   | Eval.Error msg -> resume @@ "Run-time error: " ^ msg
   | Typing.Error msg -> resume @@ "Typing error: " ^ msg
-  | Parsing.Parse_error -> resume "Paring error"
+  | Parsing.Parse_error -> resume @@
+    Printf.sprintf
+      "Paring error: line %d, column %d--%d"
+      lexbuf.lex_curr_p.pos_lnum
+      lexbuf.lex_start_p.pos_cnum
+      lexbuf.lex_curr_p.pos_cnum
 ;;
 
 let env, tyenv =
