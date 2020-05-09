@@ -83,7 +83,7 @@ and res =
 and cont = value -> res
 ;;
 
-let stringify_const = function
+let string_of_const = function
   | CBool true -> "true"
   | CBool false -> "false"
   | CInt i -> string_of_int i
@@ -92,14 +92,14 @@ let stringify_const = function
   | CUnit -> "()"
 ;;
 
-let rec stringify_value = function
-  | VConst c -> stringify_const c
+let rec string_of_value = function
+  | VConst c -> string_of_const c
   | VFun _ -> "<fun>"
   | VPair (v1, v2) ->
-    "(" ^ stringify_value v1 ^ ", " ^ stringify_value v2 ^ ")"
-  | VInl v -> Printf.sprintf "inl %s" @@ stringify_value v
-  | VInr v -> Printf.sprintf "inr %s" @@ stringify_value v
+    "(" ^ string_of_value v1 ^ ", " ^ string_of_value v2 ^ ")"
+  | VInl v -> Printf.sprintf "inl %s" @@ string_of_value v
+  | VInr v -> Printf.sprintf "inr %s" @@ string_of_value v
   | VNil -> "[]"
   | VCons (v1, v2) ->
-    Printf.sprintf "(%s) :: %s" (stringify_value v1) (stringify_value v2)
+    Printf.sprintf "(%s) :: %s" (string_of_value v1) (string_of_value v2)
 ;;

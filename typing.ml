@@ -29,9 +29,9 @@ let solve =
     | (T.TyBase _ as t1), (T.TyBase _ as t2)
     | (T.TyVarFixed _ as t1), (T.TyVarFixed _ as t2)
       when t1 = t2 -> T.TyvarMap.empty
-    | (T.TyVar x, ty) when not @@ T.TyvarSet.mem x (T.free_tyvars ty) ->
+    | (T.TyVar x, ty) when not @@ T.TyvarSet.mem x (T.ftv_ty ty) ->
       T.TyvarMap.singleton x ty
-    | (ty, T.TyVar x) when not @@ T.TyvarSet.mem x (T.free_tyvars ty) ->
+    | (ty, T.TyVar x) when not @@ T.TyvarSet.mem x (T.ftv_ty ty) ->
       T.TyvarMap.singleton x ty
     | TyFun (t11, t12), TyFun (t21, t22)
     | TyProd (t11, t12), TyProd (t21, t22)
@@ -52,7 +52,7 @@ let solve =
         | T.TyList _
        ) as t1), (_ as t2) ->
       err @@ Printf.sprintf "Types \"%s\" and \"%s\" cannot be unified"
-        (T.stringify_mono_ty t1) (T.stringify_mono_ty t2)
+        (T.string_of_ty t1) (T.string_of_ty t2)
   in
   List.fold_left (fun s (ty1, ty2) ->
       let ty1 = T.subst_ty s ty1 in
@@ -66,15 +66,15 @@ let solve =
 let rec type_expr ((var_env, op_env) as env) = function
   | S.EId x -> begin
       match Env.find_opt x var_env with
-      | Some ty_scheme -> (T.instantiate ty_scheme, T.TyvarMap.empty)
+      | Some tysc -> (T.instantiate tysc, T.TyvarMap.empty)
       | None -> err @@ Printf.sprintf "Variable \"%s\" is not defined" x
     end
   | S.EConst c -> (TyBase (type_const c), T.TyvarMap.empty)
   | S.ELet (x, e1, e2) ->
     let ty1, s1 = type_expr env e1 in
     let var_env' = T.subst_tyenv s1 var_env in
-    let ty_scheme1 = T.closing var_env' ty1 in
-    let ty2, s2 = type_expr (Env.add x ty_scheme1 var_env', op_env) e2 in
+    let tysc1 = T.closing var_env' ty1 in
+    let ty2, s2 = type_expr (Env.add x tysc1 var_env', op_env) e2 in
     let s = solve @@ constraints_of_subst_list [s1; s2] in
     (T.subst_ty s ty2, s)
   | S.ELetRec (x, y, e1, e2) ->
@@ -83,8 +83,8 @@ let rec type_expr ((var_env, op_env) as env) = function
     let fun_ty = T.TyFun (arg_ty, ret_ty) in
     let ty1, s1 =
       let var_env' =
-        Env.add y (T.tyscheme_of_mono arg_ty) @@
-        Env.add x (T.tyscheme_of_mono fun_ty) @@
+        Env.add y (T.tysc_of_ty arg_ty) @@
+        Env.add x (T.tysc_of_ty fun_ty) @@
         var_env
       in
       type_expr (var_env', op_env) e1
@@ -92,14 +92,14 @@ let rec type_expr ((var_env, op_env) as env) = function
     let s1 = solve @@ (ret_ty, ty1) :: (constraints_of_subst s1) in
     let fun_ty' = T.subst_ty s1 fun_ty in
     let var_env' = T.subst_tyenv s1 var_env in
-    let fun_ty_scheme = T.closing var_env' fun_ty' in
-    let ty2, s2 = type_expr (Env.add x fun_ty_scheme var_env', op_env) e2 in
+    let fun_tysc = T.closing var_env' fun_ty' in
+    let ty2, s2 = type_expr (Env.add x fun_tysc var_env', op_env) e2 in
     let s = solve @@ constraints_of_subst_list [s1; s2] in
     (T.subst_ty s ty2, s)
   | S.EFun (x, e) ->
     let arg_ty = Type.fresh_tyvar () in
     let ret_ty, s =
-      let var_env' = Env.add x (T.tyscheme_of_mono arg_ty) var_env in
+      let var_env' = Env.add x (T.tysc_of_ty arg_ty) var_env in
       type_expr (var_env', op_env) e in
     let fun_ty = T.TyFun (T.subst_ty s arg_ty, ret_ty) in
     (fun_ty, s)
@@ -121,7 +121,7 @@ let rec type_expr ((var_env, op_env) as env) = function
   | S.EHandle (e, ((ret_x, ret_body), ops)) ->
     let handled_ty, s1 = type_expr env e in
     let ret_ty, s2 =
-      let var_env' = Env.add ret_x (T.tyscheme_of_mono handled_ty) var_env in
+      let var_env' = Env.add ret_x (T.tysc_of_ty handled_ty) var_env in
       type_expr (var_env', op_env) ret_body in
     let s3 = type_handler env ret_ty ops in
     let s = solve @@ constraints_of_subst_list [s1; s2; s3] in
@@ -150,8 +150,8 @@ let rec type_expr ((var_env, op_env) as env) = function
       let y_ty = T.fresh_tyvar () in
       let cty, sc =
         let var_env' =
-          Env.add x (T.tyscheme_of_mono x_ty) @@
-          Env.add y (T.tyscheme_of_mono y_ty) @@
+          Env.add x (T.tysc_of_ty x_ty) @@
+          Env.add y (T.tysc_of_ty y_ty) @@
           var_env
         in
         type_expr (var_env', op_env) e
@@ -166,11 +166,11 @@ let rec type_expr ((var_env, op_env) as env) = function
       let x_ty = T.fresh_tyvar () in
       let y_ty = T.fresh_tyvar () in
       let x_cty, x_sc =
-        let var_env' = Env.add x (T.tyscheme_of_mono x_ty) var_env in
+        let var_env' = Env.add x (T.tysc_of_ty x_ty) var_env in
         type_expr (var_env', op_env) ex
       in
       let y_cty, y_sc =
-        let var_env' = Env.add y (T.tyscheme_of_mono y_ty) var_env in
+        let var_env' = Env.add y (T.tysc_of_ty y_ty) var_env in
         type_expr (var_env', op_env) ey
       in
       let c = (x_cty, y_cty) :: (T.TySum (x_ty, y_ty), mty) ::
@@ -182,8 +182,8 @@ let rec type_expr ((var_env, op_env) as env) = function
       let n_cty, n_sc = type_expr env en in
       let c_cty, c_sc =
         let var_env' =
-          Env.add x (T.tyscheme_of_mono elem_ty) @@
-          Env.add xs (T.tyscheme_of_mono (T.TyList elem_ty)) @@
+          Env.add x (T.tysc_of_ty elem_ty) @@
+          Env.add xs (T.tysc_of_ty (T.TyList elem_ty)) @@
           var_env
         in
         type_expr (var_env', op_env) ec
@@ -204,8 +204,8 @@ and type_operation_clause (var_env, op_env) ret_ty
       err @@ Printf.sprintf "Effect operation \"%s\" is not declared" op_name
     | Some ty_sig ->
       let fixed_tyvars, dom_ty, codom_ty = T.instantiate_ty_sig ty_sig in
-      let arg_ty = T.tyscheme_of_mono dom_ty in
-      let cont_ty = T.tyscheme_of_mono @@ T.TyFun (codom_ty, ret_ty) in
+      let arg_ty = T.tysc_of_ty dom_ty in
+      let cont_ty = T.tysc_of_ty @@ T.TyFun (codom_ty, ret_ty) in
       let op_body_ty, s =
         let var_env' =
           Env.add op_arg_var arg_ty @@
@@ -215,7 +215,7 @@ and type_operation_clause (var_env, op_env) ret_ty
         type_expr (var_env', op_env) op_body
       in
       let free_fixed_tyvars =
-        T.TyvarSet.inter fixed_tyvars (T.free_tyvars op_body_ty)
+        T.TyvarSet.inter fixed_tyvars (T.ftv_ty op_body_ty)
       in
       if T.TyvarSet.is_empty free_fixed_tyvars then
         (ret_ty, op_body_ty) :: (constraints_of_subst s)
@@ -278,8 +278,8 @@ let signature_restriction =
 ;;
 
 let check_closed_tyenv (var_env, op_env) =
-  assert (T.TyvarSet.is_empty @@ T.free_tyvars_in_tyenv var_env);
-  assert (T.TyvarSet.is_empty @@ T.free_tyvars_in_openv op_env)
+  assert (T.TyvarSet.is_empty @@ T.ftv_tyenv var_env);
+  assert (T.TyvarSet.is_empty @@ T.ftv_openv op_env)
 ;;
 
 let type_decl ((var_env, op_env) as env) =
@@ -287,14 +287,14 @@ let type_decl ((var_env, op_env) as env) =
   function
   | S.DExpr e ->
     let ty, _ = type_expr env e in
-    let ty_scheme = T.closing var_env ty in
-    let msg = Printf.sprintf "- : %s" (T.stringify_ty_scheme ty_scheme) in
+    let tysc = T.closing var_env ty in
+    let msg = Printf.sprintf "- : %s" (T.string_of_tysc tysc) in
     (env, msg)
   | S.DLet (x, e) ->
     let ty, _ = type_expr env e in
-    let ty_scheme = T.closing var_env ty in
-    let msg = Printf.sprintf "%s : %s" x (T.stringify_ty_scheme ty_scheme) in
-    let env' = (Env.add x ty_scheme var_env, op_env) in
+    let tysc = T.closing var_env ty in
+    let msg = Printf.sprintf "%s : %s" x (T.string_of_tysc tysc) in
+    let env' = (Env.add x tysc var_env, op_env) in
     (env', msg)
   | S.DEff (op_name, ((tyvars, dom_ty, codom_ty) as ty_sig)) ->
     match signature_restriction ty_sig with
@@ -305,11 +305,11 @@ let type_decl ((var_env, op_env) as env) =
           blame
     | None ->
       let msg = Printf.sprintf "effect %s is defined" op_name in
-      let ty_scheme = T.closing var_env @@
+      let tysc = T.closing var_env @@
         T.instantiate (tyvars, T.TyFun (dom_ty, codom_ty))
       in
       let env' =
-        (Env.add op_name ty_scheme var_env, Env.add op_name ty_sig op_env)
+        (Env.add op_name tysc var_env, Env.add op_name ty_sig op_env)
       in
       (env', msg)
 ;;

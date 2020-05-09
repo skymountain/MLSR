@@ -48,11 +48,11 @@ let rec eval_expr ((var_env, op_env) as env) = function
       match v1 with
       | VConst c ->
         err @@
-          "Constant \"" ^ (Syntax.stringify_const c) ^ "\" cannot be applied"
+          "Constant \"" ^ (Syntax.string_of_const c) ^ "\" cannot be applied"
       | VFun f -> f v2
       | VPair _ | VInl _ | VInr _ | VNil | VCons _ ->
         err @@
-          Printf.sprintf "\"%s\" cannot be applied" @@ stringify_value v1
+          Printf.sprintf "\"%s\" cannot be applied" @@ string_of_value v1
     end
   | EHandle (e, (ret, ops)) -> handle env ret ops @@ eval_expr env e
   | EPair (e1, e2) ->

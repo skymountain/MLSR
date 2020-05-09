@@ -18,7 +18,7 @@ let rec read_eval_print lexbuf env tyenv =
           ~some:(fun v ->
               Printf.sprintf "val %s = %s"
                 typing_msg
-                (Syntax.stringify_value v));
+                (Syntax.string_of_value v));
       read_eval_print lexbuf env' tyenv'
   with
   | Syntax.Error msg -> resume @@ "Syntax error: " ^ msg
@@ -93,7 +93,7 @@ let env, tyenv =
            [CInt i1; CInt i2] -> some @@ CInt (op i1 i2) | _ -> none)
       (fun x ->
          raise_err @@ "Operator \"" ^ x ^ "\" can be applied only to integers")
-      (tyscheme_of_mono @@
+      (tysc_of_ty @@
        TyFun (TyBase TyInt, TyFun (TyBase TyInt, TyBase TyInt)))
       pair_env
       [("+", (+)); ("-", (-)); ("*", ( * )); ("/", (/)); ("%", (mod))]
@@ -105,7 +105,7 @@ let env, tyenv =
       (fun x ->
          raise_err @@ "Operator \"" ^ x ^ "\" can be applied only to \
                                            floating numbers")
-      (tyscheme_of_mono @@
+      (tysc_of_ty @@
        TyFun (TyBase TyFloat, TyFun (TyBase TyFloat, TyBase TyFloat)))
       pair_env
       [("+.", (+.)); ("-.", (-.)); ("*.", ( *. )); ("/.", (/.));]
@@ -117,7 +117,7 @@ let env, tyenv =
          | _ -> none)
       (fun x ->
          raise_err @@ "Operator \"" ^ x ^ "\" can be applied only to Booleans")
-      (tyscheme_of_mono @@
+      (tysc_of_ty @@
        TyFun (TyBase TyBool, TyFun (TyBase TyBool, TyBase TyBool)))
       pair_env
       [("&&", (&&)); ("||", (||))]
@@ -131,7 +131,7 @@ let env, tyenv =
              [CStr s1; CStr s2] -> some @@ CStr (op s1 s2) | _ -> none)
         (fun x ->
            raise_err @@ "Operator \"" ^ x ^ "\" can be applied only to strings")
-        (tyscheme_of_mono @@
+        (tysc_of_ty @@
          TyFun (TyBase TyStr, TyFun (TyBase TyStr, TyBase TyStr)))
         pair_env
         [("^", (^))]
@@ -144,7 +144,7 @@ let env, tyenv =
              (try some @@ CStr (op s start len) with _ -> none)
            | _ -> none)
         (fun x -> raise_err @@ "Invlida use of \"" ^ x ^ "\"")
-        (tyscheme_of_mono
+        (tysc_of_ty
            (TyFun (TyBase TyStr,
                    TyFun (TyBase TyInt,
                           TyFun (TyBase TyInt, TyBase TyStr)))))
@@ -157,7 +157,7 @@ let env, tyenv =
         (fun op -> function [CStr s] -> some @@ CInt (op s) | _ -> none)
         (fun x ->
            raise_err @@ "Function \"" ^ x ^ "\" can be applied only to strings")
-        (tyscheme_of_mono (TyFun (TyBase TyStr, TyBase TyInt)))
+        (tysc_of_ty (TyFun (TyBase TyStr, TyBase TyInt)))
         pair_env
         [("str_len", String.length)]
     in
