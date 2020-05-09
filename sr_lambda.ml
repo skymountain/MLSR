@@ -1,6 +1,7 @@
 let rec read_eval_print lexbuf env tyenv =
   let resume msg =
     print_endline msg;
+    Lexing.flush_input lexbuf;
     read_eval_print lexbuf env tyenv
   in
   try
