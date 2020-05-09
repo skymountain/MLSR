@@ -50,7 +50,6 @@ rule main = parse
   | "match"  { MATCH }
   | "with"   { WITH }
   | '='      { EQUAL }
-  | '*'      { ASTERISK }
   | '('      { LEFT_PAREN }
   | ')'      { RIGHT_PAREN }
   | '['      { LEFT_SQ_BRACKET }
@@ -63,6 +62,7 @@ rule main = parse
   | '{'      { LEFT_BRACE }
   | '}'      { RIGHT_BRACE }
   | '+'      { PLUS }
+  | '*'      { ASTERISK }
   | '-'      { MINUS }
   | '/'      { SLASH }
   | '%'      { PERCENT }
@@ -79,6 +79,10 @@ rule main = parse
   | ">="     { GREAT_EQUAL }
   | "<>"     { LESS_GREAT }
   | "=>"     { DOUBLE_RIGHT_ARROW }
+  | "+."     { PLUS_DOT }
+  | "*."     { ASTERISK_DOT }
+  | "-."     { MINUS_DOT }
+  | "/."     { SLASH_DOT }
   | int      { LITERAL_INT (int_of_string (Lexing.lexeme lexbuf)) }
   | float    { LITERAL_FLOAT (float_of_string (Lexing.lexeme lexbuf)) }
   | id       { ID (Lexing.lexeme lexbuf) }

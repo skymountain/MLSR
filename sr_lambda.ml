@@ -98,6 +98,18 @@ let env, tyenv =
       pair_env
       [("+", (+)); ("-", (-)); ("*", ( * )); ("/", (/)); ("%", (mod))]
   in
+  (* ops of float -> float -> float *)
+  let pair_env = add_const_ops
+      (fun op -> function
+           [CFloat f1; CFloat f2] -> some @@ CFloat (op f1 f2) | _ -> none)
+      (fun x ->
+         raise_err @@ "Operator \"" ^ x ^ "\" can be applied only to \
+                                           floating numbers")
+      (tyscheme_of_mono @@
+       TyFun (TyBase TyFloat, TyFun (TyBase TyFloat, TyBase TyFloat)))
+      pair_env
+      [("+.", (+.)); ("-.", (-.)); ("*.", ( *. )); ("/.", (/.));]
+  in
   (* ops of bool -> bool -> bool *)
   let pair_env = add_const_ops
       (fun op -> function
