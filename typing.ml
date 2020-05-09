@@ -223,6 +223,55 @@ and type_operation_clause (var_env, op_env) ret_ty
         Error "Type varaibles bound in an operation clause cannot be escaped"
 ;;
 
+let signature_restriction =
+  let rec tyvars_at_pos = function
+    | T.TyVar x -> T.TyvarSet.singleton x
+    | T.TyVarFixed _ -> assert false
+    | T.TyBase _ -> T.TyvarSet.empty
+    | T.TyFun (arg_ty, ret_ty) ->
+      T.TyvarSet.union (tyvars_at_neg arg_ty) (tyvars_at_pos ret_ty)
+    | T.TyProd (ty1, ty2) | T.TySum (ty1, ty2) ->
+      T.TyvarSet.union (tyvars_at_pos ty1) (tyvars_at_pos ty2)
+    | T.TyList ty -> tyvars_at_pos ty
+  and tyvars_at_neg = function
+    | T.TyVar _ | TyBase _ -> T.TyvarSet.empty
+    | T.TyVarFixed _ -> assert false
+    | T.TyFun (arg_ty, ret_ty) ->
+      T.TyvarSet.union (tyvars_at_pos arg_ty) (tyvars_at_neg ret_ty)
+    | T.TyProd (ty1, ty2) | T.TySum (ty1, ty2) ->
+      T.TyvarSet.union (tyvars_at_neg ty1) (tyvars_at_neg ty2)
+    | T.TyList ty -> tyvars_at_neg ty
+  in
+  let rec tyvars_at_nonstrict_pos = function
+    | T.TyVar _  | T.TyBase _ -> T.TyvarSet.empty
+    | T.TyVarFixed _ -> assert false
+    | T.TyFun (arg_ty, ret_ty) ->
+      T.TyvarSet.union
+        (tyvars_at_neg arg_ty)
+        (tyvars_at_nonstrict_pos ret_ty)
+    | T.TyProd (ty1, ty2) | T.TySum (ty1, ty2) ->
+      T.TyvarSet.union
+        (tyvars_at_nonstrict_pos ty1)
+        (tyvars_at_nonstrict_pos ty2)
+    | T.TyList ty -> tyvars_at_nonstrict_pos ty
+  in
+  fun (tyvars, dom_ty, codom_ty) ->
+    let dom_sat = T.TyvarSet.disjoint
+      tyvars (tyvars_at_nonstrict_pos dom_ty)
+    in
+    let codom_sat = T.TyvarSet.disjoint
+      tyvars (tyvars_at_neg codom_ty)
+    in
+    if (not dom_sat) && (not codom_sat) then
+      Some "both of the domain and codomain types"
+    else if not dom_sat then
+      Some "the domain type"
+    else if not codom_sat then
+      Some "the codomain type"
+    else
+      None
+;;
+
 let check_closed_tyenv (var_env, op_env) =
   assert (T.TyvarSet.is_empty @@ T.free_tyvars_in_tyenv var_env);
   assert (T.TyvarSet.is_empty @@ T.free_tyvars_in_openv op_env)
@@ -243,12 +292,20 @@ let type_decl ((var_env, op_env) as env) =
     let env' = (Env.add x ty_scheme var_env, op_env) in
     (env', msg)
   | S.DEff (op_name, ((tyvars, dom_ty, codom_ty) as ty_sig)) ->
-    let msg = Printf.sprintf "Effect operation \"%s\" is defined" op_name in
-    let ty_scheme = T.closing var_env @@
-      T.instantiate (tyvars, T.TyFun (dom_ty, codom_ty))
-    in
-    let env' =
-      (Env.add op_name ty_scheme var_env, Env.add op_name ty_sig op_env)
-    in
-    (env', msg)
+    match signature_restriction ty_sig with
+    | Some blame ->
+      let msg = Printf.sprintf
+          "The type siganture does not follow the signature restriction on %s"
+          blame
+      in
+      raise @@ Error msg
+    | None ->
+      let msg = Printf.sprintf "Effect operation \"%s\" is defined" op_name in
+      let ty_scheme = T.closing var_env @@
+        T.instantiate (tyvars, T.TyFun (dom_ty, codom_ty))
+      in
+      let env' =
+        (Env.add op_name ty_scheme var_env, Env.add op_name ty_sig op_env)
+      in
+      (env', msg)
 ;;
