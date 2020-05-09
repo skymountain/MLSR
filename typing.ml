@@ -66,7 +66,8 @@ let rec type_expr ((var_env, op_env) as env) = function
   | S.EId x -> begin
       match Env.find_opt x var_env with
       | Some ty_scheme -> (T.instantiate ty_scheme, T.TyvarMap.empty)
-      | None -> raise @@ Error (Printf.sprintf "Variable \"%s\" is not defined" x)
+      | None -> raise @@
+        Error (Printf.sprintf "Variable \"%s\" is not defined" x)
     end
   | S.EConst c -> (TyBase (type_const c), T.TyvarMap.empty)
   | S.ELet (x, e1, e2) ->
@@ -221,7 +222,7 @@ and type_operation_clause (var_env, op_env) ret_ty
         (ret_ty, op_body_ty) :: (constraints_of_subst s)
       else
         raise @@
-        Error "Type varaibles bound in an operation clause cannot be escaped"
+          Error "Type varaibles bound in an operation clause cannot be escaped"
 ;;
 
 let signature_restriction =

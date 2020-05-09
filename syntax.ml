@@ -77,18 +77,8 @@ type value =
 and res =
   | RVal of value
   | RCont of OpId.t * value * cont
-  (* | RCont of cont *)
 and cont = value -> res
 ;;
-
-(* type cont = { *)
-(*   cont_effect: Id.t; *)
-(*   cont_arg: value; *)
-(*   cont_cont: value -> value; *)
-(* } *)
-;;
-
-
 
 let stringify_const = function
   | CBool true -> "true"

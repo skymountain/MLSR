@@ -34,7 +34,8 @@ let lookup_bound_tyvar m tyvar =
   | None ->
      let msg =
        Printf.sprintf
-         "Type variable \"%s\" is not bound in the type signature of the effect operation"
+         "Type variable \"%s\" is not bound in the type signature of \
+          the effect operation"
          tyvar
      in
      raise @@ S.Error msg
@@ -105,7 +106,8 @@ let check_pattern_vars vars =
 %token SINGLE_QUOTE COLON DOT
 %token VERTICAL_BAR
 %token LEFT_BRACE RIGHT_BRACE
-%token PLUS MINUS ASTERISK SLASH PERCENT CARET DOUBLE_VERTICAL_BAR DOUBLE_AMPERSAND
+%token PLUS MINUS ASTERISK SLASH PERCENT CARET
+       DOUBLE_VERTICAL_BAR DOUBLE_AMPERSAND
 %token LESS LESS_EQUAL GREAT GREAT_EQUAL LESS_GREAT
 %token SEMICOLON
 %token INL INR
@@ -201,7 +203,8 @@ const_expr:
   | LEFT_PAREN RIGHT_PAREN { S.CUnit }
 
 handler_expr:
-  | LEFT_BRACE; c = separated_nonempty_list(VERTICAL_BAR, handler_clause); RIGHT_BRACE
+  | LEFT_BRACE; c = separated_nonempty_list(VERTICAL_BAR, handler_clause);
+    RIGHT_BRACE
     {
       let ret, ops =
         List.fold_left
@@ -238,12 +241,14 @@ handler_clause:
     }
 
 match_clause:
-  | LEFT_PAREN; x = ID; COMMA; y = ID; RIGHT_PAREN; RIGHT_ARROW; e = expr_below_semi
+  | LEFT_PAREN; x = ID; COMMA; y = ID; RIGHT_PAREN; RIGHT_ARROW;
+    e = expr_below_semi
     {
       check_pattern_vars [x; y];
       S.MPair (x, y, e)
     }
-  | INL; x = ID; RIGHT_ARROW; ex = expr; VERTICAL_BAR; INR; y = ID; RIGHT_ARROW; ey = expr_below_semi
+  | INL; x = ID; RIGHT_ARROW; ex = expr; VERTICAL_BAR; INR; y = ID; RIGHT_ARROW;
+    ey = expr_below_semi
     { S.MInj (x, ex, y, ey) }
   | LEFT_SQ_BRACKET; RIGHT_SQ_BRACKET; RIGHT_ARROW; en = expr; VERTICAL_BAR;
     x = ID; DOUBLE_COLON; xs = ID; RIGHT_ARROW; ec = expr_below_semi
