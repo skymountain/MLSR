@@ -33,59 +33,97 @@ let env, tyenv =
   let open Syntax in
   let open Eval in
   let raise_err msg = raise @@ Eval.Error msg in
-  let add_bin_ops
-      err apply (* : 'a -> value -> value -> value option *) ty =
+  let arity_of (_, ty) =
+    let rec iter = function
+      | TyFun (_, t) -> 1 + iter t
+      | TyVar _
+      | TyVarFixed _
+      | TyBase _
+      | TyProd _
+      | TySum _
+      | TyList _
+        -> 0
+    in
+    iter ty
+  in
+  let rec value_rep_of_op apply err rev_args arity =
+    if arity = 0 then
+      match apply (List.rev rev_args) with Some v -> v | None -> err ()
+    else
+      VFun (fun v -> return @@
+             value_rep_of_op apply err (v::rev_args) (arity - 1))
+  in
+  let add_ops apply err ty =
+    let arity = arity_of ty in
     List.fold_left (fun (env, tyenv) (x, op) ->
-        let v = VFun (fun v1 -> return @@ VFun (fun v2 ->
-            match apply op v1 v2 with Some v -> RVal v | None -> err x))
+        let v = value_rep_of_op
+            (fun vs -> apply op vs)
+            (fun () -> err x)
+            []
+            arity
         in
         (Env.add x v env, Env.add x ty tyenv))
   in
-  let add_const_bin_ops err apply (* : 'a -> const -> const -> value option *) =
-    add_bin_ops err
-      (fun op v1 v2 ->
-         match v1, v2 with VConst c1, VConst c2 -> apply op c1 c2 | _ -> none)
+  let add_const_ops apply =
+    let capply op vs =
+      let cvs_opt =
+        List.fold_right
+          (fun v cvs_opt ->
+             bind cvs_opt (fun cvs ->
+                 match v with VConst cv -> some @@ cv :: cvs
+                            | VFun _
+                            | VPair _
+                            | VInl _ | VInr _
+                            | VNil | VCons _
+                              -> none))
+          vs (some [])
+      in
+      bind cvs_opt (fun cvs -> apply op cvs)
+    in
+    add_ops capply
   in
-  let pair_env = (Env.empty, Env.empty) in
+  let pair_env = (Env.empty, Env.empty)
+  in
   (* ops of int -> int -> int *)
-  let pair_env = add_const_bin_ops
+  let pair_env = add_const_ops
+      (fun op -> function
+           [CInt i1; CInt i2] -> some @@ VConst (CInt (op i1 i2)) | _ -> none)
       (fun x ->
          raise_err @@ "Operator \"" ^ x ^ "\" can be applied only to integers")
-      (fun op c1 c2 -> match c1, c2 with
-           CInt i1, CInt i2 -> some @@ VConst (CInt (op i1 i2)) | _ -> none)
       (tyscheme_of_mono @@
        TyFun (TyBase TyInt, TyFun (TyBase TyInt, TyBase TyInt)))
       pair_env
       [("+", (+)); ("-", (-)); ("*", ( * )); ("/", (/)); ("%", (mod))]
   in
   (* ops of int -> int -> bool *)
-  let pair_env = add_const_bin_ops
+  let pair_env = add_const_ops
+      (fun op -> function
+           [CInt i1; CInt i2] -> some @@ VConst (CBool (op i1 i2)) | _ -> none)
       (fun x ->
          raise_err @@ "Operator \"" ^ x ^ "\" can be applied only to integers")
-      (fun op c1 c2 -> match c1, c2 with
-           CInt i1, CInt i2 -> some @@ VConst (CBool (op i1 i2)) | _ -> none)
       (tyscheme_of_mono @@
        TyFun (TyBase TyInt, TyFun (TyBase TyInt, TyBase TyBool)))
       pair_env
       [("<", (<)); ("<=", (<=)); (">", (>)); (">=", (>=))]
   in
   (* ops of bool -> bool -> bool *)
-  let pair_env = add_const_bin_ops
+  let pair_env = add_const_ops
+      (fun op -> function
+         | [CBool b1; CBool b2] -> some @@ VConst (CBool (op b1 b2))
+         | _ -> none)
       (fun x ->
          raise_err @@ "Operator \"" ^ x ^ "\" can be applied only to Booleans")
-      (fun op c1 c2 -> match c1, c2 with
-           CBool b1, CBool b2 -> some @@ VConst (CBool (op b1 b2)) | _ -> none)
       (tyscheme_of_mono @@
        TyFun (TyBase TyBool, TyFun (TyBase TyBool, TyBase TyBool)))
       pair_env
       [("&&", (&&)); ("||", (||))]
   in
-  (* ops of string -> string -> string *)
-  let pair_env = add_const_bin_ops
+  (* ops of string *)
+  let pair_env = add_const_ops
+      (fun op -> function
+           [CStr s1; CStr s2] -> some @@ VConst (CStr (op s1 s2)) | _ -> none)
       (fun x ->
          raise_err @@ "Operator \"" ^ x ^ "\" can be applied only to strings")
-      (fun op c1 c2 -> match c1, c2 with
-           CStr s1, CStr s2 -> some @@ VConst (CStr (op s1 s2)) | _ -> none)
       (tyscheme_of_mono @@
        TyFun (TyBase TyStr, TyFun (TyBase TyStr, TyBase TyStr)))
       pair_env
@@ -94,21 +132,24 @@ let env, tyenv =
   (* cons *)
   let pair_env =
     let tyvar0 = fresh_tyvar () in
-    add_bin_ops
+    add_ops
+      (fun op -> function [v1; v2] -> some @@ op v1 v2 | _ -> none)
       (fun _ -> assert false)
-      (fun op v1 v2 -> try some @@ op v1 v2 with _ -> none)
-      (closing Env.empty @@ TyFun (tyvar0, TyFun (TyList tyvar0, TyList tyvar0)))
+      (closing Env.empty @@
+       TyFun (tyvar0, TyFun (TyList tyvar0, TyList tyvar0)))
       pair_env
       ["::",  (fun v1 v2 -> VCons (v1, v2))]
   in
   (* comparison operators *)
   let pair_env =
     let tyvar0 = fresh_tyvar () in
-    add_bin_ops
+    add_ops
+      (fun op -> function [v1; v2] -> (try some @@ op v1 v2 with _ -> none)
+                        | _ -> none)
       (fun x ->
          raise_err @@ "Incomparable objects were comapred by \"" ^ x ^ "\"")
-      (fun op v1 v2 -> try some @@ op v1 v2 with _ -> none)
-      (closing Env.empty @@ TyFun (tyvar0, TyFun (tyvar0, TyBase TyBool)))
+      (closing Env.empty @@
+       TyFun (tyvar0, TyFun (tyvar0, TyBase TyBool)))
       pair_env
       ["=",  (fun v1 v2 -> VConst (CBool (v1 = v2)));
        "<>", (fun v1 v2 -> VConst (CBool (v1 <> v2)));]
@@ -117,10 +158,11 @@ let env, tyenv =
   let pair_env =
     let tyvar0 = fresh_tyvar () in
     let tyvar1 = fresh_tyvar () in
-    add_bin_ops
+    add_ops
+      (fun op -> function [v1; v2] -> some @@ op v1 v2 | _ -> none)
       (fun _ -> assert false)
-      (fun op v1 v2 -> some @@ op v1 v2)
-      (closing Env.empty @@ TyFun (tyvar0, TyFun (tyvar1, tyvar1)))
+      (closing Env.empty @@
+       TyFun (tyvar0, TyFun (tyvar1, tyvar1)))
       pair_env
       [";", (fun _ v2 -> v2)]
   in
