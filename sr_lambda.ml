@@ -78,7 +78,10 @@ let env, tyenv =
                               -> none))
           vs (some [])
       in
-      bind cvs_opt (fun cvs -> apply op cvs)
+      bind cvs_opt
+        (fun cvs ->
+           let res = apply op cvs in
+           Option.map (fun cv -> VConst cv) res)
     in
     add_ops capply
   in
@@ -87,7 +90,7 @@ let env, tyenv =
   (* ops of int -> int -> int *)
   let pair_env = add_const_ops
       (fun op -> function
-           [CInt i1; CInt i2] -> some @@ VConst (CInt (op i1 i2)) | _ -> none)
+           [CInt i1; CInt i2] -> some @@ CInt (op i1 i2) | _ -> none)
       (fun x ->
          raise_err @@ "Operator \"" ^ x ^ "\" can be applied only to integers")
       (tyscheme_of_mono @@
@@ -98,7 +101,7 @@ let env, tyenv =
   (* ops of int -> int -> bool *)
   let pair_env = add_const_ops
       (fun op -> function
-           [CInt i1; CInt i2] -> some @@ VConst (CBool (op i1 i2)) | _ -> none)
+           [CInt i1; CInt i2] -> some @@ CBool (op i1 i2) | _ -> none)
       (fun x ->
          raise_err @@ "Operator \"" ^ x ^ "\" can be applied only to integers")
       (tyscheme_of_mono @@
@@ -109,7 +112,7 @@ let env, tyenv =
   (* ops of bool -> bool -> bool *)
   let pair_env = add_const_ops
       (fun op -> function
-         | [CBool b1; CBool b2] -> some @@ VConst (CBool (op b1 b2))
+         | [CBool b1; CBool b2] -> some @@ CBool (op b1 b2)
          | _ -> none)
       (fun x ->
          raise_err @@ "Operator \"" ^ x ^ "\" can be applied only to Booleans")
@@ -119,15 +122,45 @@ let env, tyenv =
       [("&&", (&&)); ("||", (||))]
   in
   (* ops of string *)
-  let pair_env = add_const_ops
-      (fun op -> function
-           [CStr s1; CStr s2] -> some @@ VConst (CStr (op s1 s2)) | _ -> none)
-      (fun x ->
-         raise_err @@ "Operator \"" ^ x ^ "\" can be applied only to strings")
-      (tyscheme_of_mono @@
-       TyFun (TyBase TyStr, TyFun (TyBase TyStr, TyBase TyStr)))
-      pair_env
-      [("^", (^))]
+  let pair_env =
+    (* concatenation *)
+    let pair_env =
+      add_const_ops
+        (fun op -> function
+             [CStr s1; CStr s2] -> some @@ CStr (op s1 s2) | _ -> none)
+        (fun x ->
+           raise_err @@ "Operator \"" ^ x ^ "\" can be applied only to strings")
+        (tyscheme_of_mono @@
+         TyFun (TyBase TyStr, TyFun (TyBase TyStr, TyBase TyStr)))
+        pair_env
+        [("^", (^))]
+    in
+    (* substring *)
+    let pair_env =
+      add_const_ops
+        (fun op -> function
+             [CStr s; CInt start; CInt len] ->
+             (try some @@ CStr (op s start len) with _ -> none)
+           | _ -> none)
+        (fun x -> raise_err @@ "Invlida use of \"" ^ x ^ "\"")
+        (tyscheme_of_mono
+           (TyFun (TyBase TyStr,
+                   TyFun (TyBase TyInt,
+                          TyFun (TyBase TyInt, TyBase TyStr)))))
+        pair_env
+        [("str_sub", String.sub)]
+    in
+    (* length *)
+    let pair_env =
+      add_const_ops
+        (fun op -> function [CStr s] -> some @@ CInt (op s) | _ -> none)
+        (fun x ->
+           raise_err @@ "Function \"" ^ x ^ "\" can be applied only to strings")
+        (tyscheme_of_mono (TyFun (TyBase TyStr, TyBase TyInt)))
+        pair_env
+        [("str_len", String.length)]
+    in
+    pair_env
   in
   (* cons *)
   let pair_env =
