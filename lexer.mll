@@ -33,6 +33,7 @@ rule main = parse
   | "bool"  { BOOL }
   | "list"  { LIST }
   | "float" { FLOAT }
+  | "unit"  { UNIT }
   | "true"  { TRUE }
   | "false" { FALSE }
   | "fun"   { FUN }

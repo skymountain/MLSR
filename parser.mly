@@ -101,7 +101,7 @@ let check_pattern_vars vars =
 %token RIGHT_PAREN
 %token COMMA
 %token MATCH EFFECT HANDLE WITH RETURN
-%token INT STRING BOOL FLOAT LIST
+%token INT STRING BOOL FLOAT LIST UNIT
 %token SINGLE_QUOTE COLON DOT
 %token VERTICAL_BAR
 %token LEFT_BRACE RIGHT_BRACE
@@ -198,6 +198,7 @@ const_expr:
   | i = LITERAL_INT { S.CInt i }
   | s = LITERAL_STRING { S.CStr s }
   | f = LITERAL_FLOAT { S.CFloat f }
+  | LEFT_PAREN RIGHT_PAREN { S.CUnit }
 
 handler_expr:
   | LEFT_BRACE; c = separated_nonempty_list(VERTICAL_BAR, handler_clause); RIGHT_BRACE
@@ -301,6 +302,7 @@ ty_const:
   | BOOL { T.TyBool }
   | STRING { T.TyStr }
   | FLOAT { T.TyFloat }
+  | UNIT { T.TyUnit }
 
 tyvar:
   | SINGLE_QUOTE; x = ID { x }

@@ -28,6 +28,7 @@ type const =
   | CInt of int
   | CStr of string
   | CFloat of float
+  | CUnit
 [@@deriving show]
 ;;
 
@@ -95,6 +96,7 @@ let stringify_const = function
   | CInt i -> string_of_int i
   | CStr s -> "\"" ^ s ^ "\""
   | CFloat f -> string_of_float f
+  | CUnit -> "()"
 ;;
 
 let rec stringify_value = function

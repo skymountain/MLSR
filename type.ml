@@ -21,6 +21,7 @@ type bty =
   | TyBool
   | TyStr
   | TyFloat
+  | TyUnit
 [@@deriving show]
 ;;
 
@@ -194,6 +195,7 @@ let stringify_bty = function
   | TyBool -> "bool"
   | TyStr -> "string"
   | TyFloat -> "float"
+  | TyUnit -> "unit"
 ;;
 
 let rec stringify_ty bound_m free_m =

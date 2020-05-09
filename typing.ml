@@ -9,6 +9,7 @@ let type_const = function
   | S.CBool _ -> T.TyBool
   | S.CStr _ -> T.TyStr
   | S.CFloat _ -> T.TyFloat
+  | S.CUnit -> T.TyUnit
 ;;
 
 let constraints_of_subst s =
