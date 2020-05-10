@@ -182,7 +182,8 @@ val - : int = 3
 To invoke effects in MLSR, we first need to declare effect operations.
 
 ```ocaml
-(* Declares effect operation select, which is referred to as a variable of polymorphic type 'a list -> 'a *)
+(* Declares effect operation select,
+   which is referred to as a variable of polymorphic type 'a list -> 'a *)
 
 # effect select : 'a . 'a list => 'a;;
 effect select is defined
@@ -190,7 +191,8 @@ effect select is defined
 # select;;
 val - : (('a) list) -> ('a) = <fun>
 
-(* The following expression is well typed but will terminate at the "Uncaught continuation" error as expected *)
+(* The following expression is well typed
+   but will terminate at the "Uncaught continuation" error as expected *)
 
 # select [1;2;3];;
 Run-time error: Uncaught continuation
@@ -201,7 +203,10 @@ following code handles `select` and returns the head of a given list as a result
 of the call to `select`.
 
 ```ocaml
-# handle 42 + select [1;2;3] with { return x -> x | select x k -> (match x with [] -> -1 | y::ys -> k y) }
+# handle 42 + select [1;2;3] with {
+    return x -> x
+  | select x k -> (match x with [] -> -1 | y::ys -> k y)
+  };;
 val - : int = 43
 ```
 
@@ -219,7 +224,10 @@ then the continuation will perform the remaining computation (`42 + 1`) and pass
 the result to the return clause.  Thus, the final result is `430`.
 
 ```ocaml
-# handle 42 + select [1;2;3] with { return x -> x * 10 | select x k -> (match x with [] -> -1 | y::ys -> k y) }
+# handle 42 + select [1;2;3] with {
+    return x -> x * 10
+  | select x k -> (match x with [] -> -1 | y::ys -> k y)
+  };;
 val - : int = 430
 ```
 
@@ -278,7 +286,7 @@ above).  See [the paper](https://arxiv.org/abs/2003.08138) for detail.
 
 We can disable the signature restriction by giving option
 `--disable-signature-restriction` to `mlsr`. Then, we can find the (ab)use of
-`get_id` gives rise to an expected run-time error.
+`get_id` gives rise to an undesired run-time error.
 
 ```bash
 $ mlsr --disable-signature-restriction
