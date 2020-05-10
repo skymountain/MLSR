@@ -233,7 +233,7 @@ and type_operation_clause (var_env, op_env) ret_ty
       if T.TyvarSet.is_empty free_fixed_tyvars then
         (ret_ty, op_body_ty) :: (constraints_of_subst s)
       else
-        err "Type varaibles bound in an operation clause cannot be escaped"
+        err "Type variables bound in an operation clause cannot be escaped"
 ;;
 
 let check_SR = ref true
@@ -314,7 +314,7 @@ let type_decl ((var_env, op_env) as env) =
     | Some blame ->
       err @@
         Printf.sprintf
-          "The type siganture does not follow the signature restriction on %s"
+          "The type signature does not follow the signature restriction on %s"
           blame
     | None ->
       let msg = Printf.sprintf "effect %s is defined" op_name in

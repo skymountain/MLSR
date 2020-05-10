@@ -1,14 +1,15 @@
 # MLSR  #
 
-MLSR is an interpreter of a functional programming language with
-let-polymorphism, Hindley-Milner type inference, algebraic effect handlers, and
-*signature restriction*, a restriction on type interface of algebraic effects to
-ensure safety of their handling.  MLSR is a polymorphic effectful language, but
-it does not enforce value restriction&mdash;which is a standard approach to
-reconciling polymorphism and computational effects and is adopted by other
-ML-like languages including OCaml, Standard ML, Koka, etc.&mdash;thanks to the
-signature restriction.  The details including formalization and metatheory are
-found at:
+MLSR is an interpreter of a functional programming language that supports
+let-polymorphism, Hindley-Milner type inference, and polymorphic algebraic
+effects and handlers with *signature restriction*, which is a methodology to
+restrict type interfaces of algebraic effects for type-safe handling of
+polymorphic effects.  MLSR is a polymorphic effectful call-by-value (CBV)
+language, but it does not need to enforce value restriction&mdash;which is
+another approach to reconciling polymorphism and computational effects in CBV
+languages (or fragments) and is adopted by other many ML-like languages
+including OCaml, Standard ML, Koka, etc.&mdash;thanks to the signature
+restriction.  The details including formalization and metatheory are found at:
 
 * Taro Sekiyama Tsukada Takeshi, Atsushi Igarashi: Signature restriction for
   polymorphic algebraic effects.  Conditionally accepted at ICFP 2020.
@@ -46,50 +47,50 @@ $ mlsr
 
 [TODO]
 
-## Sytnax
+## Syntax
 
 The syntax of MLSR is given by the following BNF.  We write `A*` for (possibly
 empty) lists of elements in the class `A`.  (For example, `x*` represent
 sequences of variables.)  `\mid` is replaced by `|` in program code.  Texts
-surrounded by `(*` and `*)` are just comments.  We may wrap nonterminal symbols
-by `__` (e.g., `__Expression__`).
+surrounded by `(*` and `*)` are just comments.  We may emphasize nonterminal
+symbols by wrapping them with `__` (e.g., `__integers__`for integer literals).
 
 ```
 Term variables ::= x, y, z, f, g, k, op, etc.
 Type variables ::= 'a, 'b, 'c, etc.
 
-Top-level ::= __Effect declaration__ ;; | __Variable declaration__ ;; | __Expression__ ;;
+Top-level ::= ED ;; | VD ;; | e ;;
 
-Effect delcaration ::= effect op : 'a* . T1 => T2
+Effect declarations ED ::= effect op : 'a* . T1 => T2
 
-Types, T ::= 'a         (* Type variables *)
-           | BT         (* Base types *)
-           | T1 -> T2   (* Function types *)
-           | T1 * T2    (* Product types *)
-           | T1 + T2    (* Sum types *)
-           | T list     (* List types *)
+Types T ::= 'a         (* Type variables *)
+          | BT         (* Base types *)
+          | T1 -> T2   (* Function types *)
+          | T1 * T2    (* Product types *)
+          | T1 + T2    (* Sum types *)
+          | T list     (* List types *)
 
-Base Types, BT ::= bool | int | string | float | unit
+Base Types BT ::= bool | int | string | float | unit
 
-Variable declarations ::= let x y* = e | let rec f x y* = e
+Variable declarations VD ::= let x y* = e | let rec f x y* = e
 
-Expressions, e ::= x
-                 | c   (* constants *)
-                 | fun x y* -> e | e1 e2 |
-                 | let x y* = e1 in e2 | let rec f x y* = e1 in e2
-                 | ( e1 , e2 ) | inl e | inr e | [ e1 ; ... ; en ]
-                 | match e with __pattern clause__
-                 | if e1 then e2 else e3 | e1 ; e2
-                 | handle e with { return x -> x ( \mid __operation clause__ )* }
+Expressions e ::= x
+                | c
+                | fun x y* -> e | e1 e2 |
+                | let x y* = e1 in e2 | let rec f x y* = e1 in e2
+                | ( e1 , e2 ) | inl e | inr e | [ e1 ; ... ; en ]
+                | match e with p
+                | if e1 then e2 else e3 | e1 ; e2
+                | handle e with { return x -> x ( \mid o )* }
 
-Constants ::= () | true | false | __integers__ | __floating-point numbers__ | __strings__
+Constants c ::= () | true | false | __integers__ | __floating-point numbers__ | __strings__
                | __primitive operations__   (* see the examples below for detail *)
 
-Pattern clause ::= ( x , y ) -> e
-                 | inl x -> e1 \mid inr y -> e2
-                 | [ ] -> e1 \mid x :: y -> e2
+Pattern clauses p ::= ( x , y ) -> e
+                  | inl x -> e1 \mid inr y -> e2
+                  | [ ] -> e1 \mid x :: y -> e2
 
-Operation clause ::= op x k -> e
+Operation clauses o ::= op x k -> e
 ```
 
 ## Examples
@@ -97,16 +98,16 @@ Operation clause ::= op x k -> e
 ### Functions
 
 ```ocaml
-# let succ = fun x -> x + 42;;
-val succ : (int) -> (int) = <fun>
+# let plus42 = fun x -> x + 42;;
+val plus42 : (int) -> (int) = <fun>
 
-# succ 1;;
+# plus42 1 ;;
 val - : int = 43
 
-# let succ x = x + 42;;
-val succ : (int) -> (int) = <fun>
+# let plus42 x = x + 42;;
+val plus42 : (int) -> (int) = <fun>
 
-# succ 3;;
+# plus42 3;;
 val - : int = 45
 ```
 
@@ -136,14 +137,11 @@ val - : (bool) * (int) = (true, 0)
 
 MLSR is free from the value restriction.
 ``` ocaml
-# let f x =
-  let g = if x then (fun y z -> y) else (fun y z -> z) in
-  (g "abc", g 0)
-  ;;
-val f : (bool) -> (((string) -> (string)) * ((int) -> (int))) = <fun>
+# let f = id id in (f "foo", f 1);;
+val - : (string) * (int) = ("foo", 1)
 ```
 The value restriction does not accept the expression above because
-`g` could not have a polymorphic type under it.
+`f` could not have a polymorphic type under it.
 
 ### Pairs, injections, and lists
 
@@ -151,7 +149,7 @@ The value restriction does not accept the expression above because
 # let x = (1, "foo");;
 val x : (int) * (string) = (1, "foo")
 
-# match x with (y, z) -> y + str_len z;;
+# match x with (y, z) -> y + str_len z;;  (* str_len returns the length of a string *)
 val - : int = 4
 ```
 
@@ -183,7 +181,7 @@ To invoke effects in MLSR, we first need to declare effect operations.
 
 ```ocaml
 (* Declares effect operation select,
-   which is referred to as a variable of polymorphic type 'a list -> 'a *)
+   which can be referred to as a variable of polymorphic type 'a list -> 'a *)
 
 # effect select : 'a . 'a list => 'a;;
 effect select is defined
@@ -192,13 +190,13 @@ effect select is defined
 val - : (('a) list) -> ('a) = <fun>
 
 (* The following expression is well typed
-   but will terminate at the "Uncaught continuation" error as expected *)
+   but its evaluation terminates at the "Uncaught continuation" error as expected *)
 
 # select [1;2;3];;
 Run-time error: Uncaught continuation
 ```
 
-Effect operations are handled by `handle-with` expressions.  For example, the
+Effect operations are handled by `handle`&ndash;`with` expressions.  For example, the
 following code handles `select` and returns the head of a given list as a result
 of the call to `select`.
 
@@ -218,7 +216,7 @@ val - : int = 420
 ```
 
 Continuations given to the operation clause are wrapped by the handler installed
-at the `handle-with` expression.  For example, in the following code, the
+at the `handle`&ndash;`with` expression.  For example, in the following code, the
 continuation `k` is invoked with the head of the argument list (i.e., `1`) and
 then the continuation will perform the remaining computation (`42 + 1`) and pass
 the result to the return clause.  Thus, the final result is `430`.
@@ -234,7 +232,7 @@ val - : int = 430
 We also can collect all of the values computed with elements in the list.
 
 ```ocaml
-# let rec map f l = match l with [] -> a | x::xs -> (f x) :: (map f xs);;
+# let rec map f l = match l with [] -> [] | x::xs -> (f x) :: (map f xs);;
 val map : (('a) -> ('b)) -> ((('a) list) -> (('b) list)) = <fun>
 
 # let rec append l m = match l with [] -> m | x::xs -> x :: (append xs m);;
@@ -252,7 +250,7 @@ assigned type variable and must not be escaped from the operation clause.
 
 ```ocaml
 # handle 42 with { return x -> x | select x k -> x };;
-Typing error: Type varaibles bound in an operation clause cannot be escaped
+Typing error: Type variables bound in an operation clause cannot be escaped
 ```
 
 Handlers can deal with two or more operation clauses.
@@ -260,12 +258,19 @@ Handlers can deal with two or more operation clauses.
 # effect fail : 'a. unit => 'a;;
 effect fail is defined
 
-# handle if select [false;true] then "win" else fail () with {
-    return x -> inl x
-  | select x k -> (match x with [] -> inr () | y::_ -> k y)
-  | fail x k -> inl "loose" 
-  };;
-val - : (string) + (unit) = inl "loose"
+# let f xs ys = handle
+      let x = select xs in
+      let y = select ys in
+      if y = 0 then fail () else x / y
+    with {
+      return z -> [z]
+    | select x k -> flatten (map k x)
+    | fail x k -> []
+    };;
+val f : ((int) list) -> (((int) list) -> ((int) list)) = <fun>
+
+# f [42; 12; 6] [3;2;0];;
+val - : (int) list = (14) :: (21) :: (4) :: (6) :: (2) :: (3) :: []
 ```
 
 ### Signature restriction
@@ -276,17 +281,17 @@ example used in [our paper](https://arxiv.org/abs/2003.08138), is rejected
 because it invalidates the signature restriction.
 ```ocaml
 # effect get_id : 'a. unit => 'a -> 'a;;
-Typing error: The type siganture does not follow the signature restriction on the codomain type
+Typing error: The type signature does not follow the signature restriction on the codomain type
 ```
 
-In general, the signature restriction requires quantified type varaibles (`'a`
-above) not to appear (1) at non-strictly positive positions in the domain type
-(`unit` above) nor (2) at negative positions in the codomain type (`'a -> 'a`
+In general, the signature restriction requires quantified type variables (`'a`
+above) not to appear (1) at a non-strictly positive position in the domain type
+(`unit` above) nor (2) at a negative position in the codomain type (`'a -> 'a`
 above).  See [the paper](https://arxiv.org/abs/2003.08138) for detail.
 
 We can disable the signature restriction by giving option
 `--disable-signature-restriction` to `mlsr`. Then, we can find the (ab)use of
-`get_id` gives rise to an undesired run-time error.
+`get_id` gives rise to an undesired run-time error (as expected).
 
 ```bash
 $ mlsr --disable-signature-restriction
@@ -302,6 +307,9 @@ effect get_id is defined
   };;
 Run-time error: Operator "&&" can be applied only to Booleans
 ```
+
+Here, `f true` is expected to return a Boolean, but at run-time
+it may return integer `2` for the lack of any restriction.
 
 ### Complete list of primitive functions
 [TODO]
