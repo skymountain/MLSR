@@ -118,6 +118,7 @@ let check_pattern_vars vars =
 %token FALSE
 %token <string> LITERAL_STRING
 
+%right RIGHT_ARROW
 %nonassoc below_SEMICOLON
 %right SEMICOLON
 %nonassoc above_SEMICOLON
@@ -129,7 +130,6 @@ let check_pattern_vars vars =
 %left PLUS MINUS PLUS_DOT MINUS_DOT
 %left ASTERISK SLASH PERCENT ASTERISK_DOT SLASH_DOT
 %nonassoc LIST
-%right RIGHT_ARROW
 
 
 %start <Syntax.decl option> main

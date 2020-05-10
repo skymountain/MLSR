@@ -101,6 +101,19 @@ let rec string_of_value = function
   | VInl v -> Printf.sprintf "inl %s" @@ string_of_value v
   | VInr v -> Printf.sprintf "inr %s" @@ string_of_value v
   | VNil -> "[]"
-  | VCons (v1, v2) ->
-    Printf.sprintf "(%s) :: %s" (string_of_value v1) (string_of_value v2)
+  | (VCons (v1, v2)) as v -> begin
+      match string_of_list_value v with
+      | Some s -> Printf.sprintf "[%s]" s
+      | None -> Printf.sprintf "(%s) :: %s"
+                  (string_of_value v1)
+                  (string_of_value v2)
+    end
+and string_of_list_value v =
+  let rec iter = function
+    | VNil -> Some []
+    | VCons (v1, v2) ->
+      Option.map (fun vs -> (string_of_value v1) :: vs) (iter v2)
+    | VConst _ | VFun _ | VPair _ | VInl _ | VInr _ -> None
+  in
+  Option.map (String.concat "; ") (iter v)
 ;;

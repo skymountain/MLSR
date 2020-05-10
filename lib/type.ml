@@ -188,25 +188,53 @@ let string_of_bty = function
   | TyUnit -> "unit"
 ;;
 
+let preference_of_ty_cnstr = function
+  | TyVar _ | TyBase _ | TyVarFixed _ -> 0
+  | TyList _ -> -1
+  | TyProd _ -> -2
+  | TySum _ -> -3
+  | TyFun _ -> -4
+;;
+
+
+(* Wrap with paranthesises only when type constructors of subcompoents
+   are assigned lower prefeference *)
 let rec _string_of_ty bound_m free_m =
   let find x =
     match TyvarMap.find_opt x bound_m with
     | None -> TyvarMap.find x free_m
     | Some letter -> letter
   in
+  let paren p s =
+    let format : ('a->'b, unit, string) format = if p then "(%s)" else "%s" in
+    Printf.sprintf format s
+  in
   let self ty = _string_of_ty bound_m free_m ty in
-  function
-  | TyVar x ->
-    Printf.sprintf "'%s" @@ find x
-  | TyVarFixed x -> Printf.sprintf "@%s" @@ find x
-  | TyBase b -> string_of_bty b
-  | TyFun (arg, ret) ->
-    Printf.sprintf "(%s) -> (%s)" (self arg) (self ret)
-  | TyProd (f, s) ->
-    Printf.sprintf "(%s) * (%s)" (self f) (self s)
-  | TySum (l, r) ->
-    Printf.sprintf "(%s) + (%s)" (self l) (self r)
-  | TyList t -> Printf.sprintf "(%s) list" @@ self t
+  fun ty ->
+    let p = preference_of_ty_cnstr ty in
+    match ty with
+    | TyVar x ->
+      Printf.sprintf "'%s" @@ find x
+    | TyVarFixed x -> Printf.sprintf "@%s" @@ find x
+    | TyBase b -> string_of_bty b
+    | TyFun (arg, ret) ->
+      (* right-associative *)
+      let arg_str = paren (preference_of_ty_cnstr arg <= p) (self arg) in
+      let ret_str = paren (preference_of_ty_cnstr ret < p) (self ret) in
+      Printf.sprintf "%s -> %s" arg_str ret_str
+    | TyProd (f, s) ->
+      (* left-associative *)
+      let fst_str = paren (preference_of_ty_cnstr f < p) (self f) in
+      let snd_str = paren (preference_of_ty_cnstr s <= p) (self s) in
+      Printf.sprintf "%s * %s" fst_str snd_str
+    | TySum (l, r) ->
+      (* left-associative *)
+      let left_str = paren (preference_of_ty_cnstr l < p) (self l) in
+      let right_str = paren (preference_of_ty_cnstr r <= p) (self r) in
+      Printf.sprintf "%s + %s" left_str right_str
+    | TyList t ->
+      let str = paren (preference_of_ty_cnstr t < p) (self t) in
+      Printf.sprintf "%s list" @@ str
 ;;
 
 let string_of_tysc =
