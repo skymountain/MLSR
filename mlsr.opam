@@ -10,7 +10,7 @@ build: [
   [ "dune" "build" "-p" name "-j" jobs ]
 ]
 depends: [
-  "ocaml" { >= "4.08" }
+  "ocaml" { >= "4.10" }
   "dune" { >= "2.5" }
   "menhir"
   "ppx_deriving" { >= "4.4.1" }

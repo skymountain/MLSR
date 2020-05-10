@@ -20,7 +20,7 @@ restriction.  The details including formalization and metatheory are found at:
 
 ### Requirements
 
-* `ocaml` (>= 4.08)
+* `ocaml` (>= 4.10)
 * `opam` (>= 2.0)
 * `dune` (>= 2.5)
 * `menhir`
