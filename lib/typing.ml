@@ -41,6 +41,7 @@ let solve =
       let t12 = T.subst_ty s1 t12 in
       let t22 = T.subst_ty s1 t22 in
       let s2 = solve (t12, t22) in
+      let s1 = T.subst_subst ~by:s2 ~target:s1 in
       T.TyvarMap.union (fun _ _ _ -> assert false) s1 s2
     | TyList t1, TyList t2 -> solve (t1, t2)
     | ((  T.TyVar _

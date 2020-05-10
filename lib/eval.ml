@@ -100,6 +100,7 @@ and eval_expr_list env vs = function
 and handle ((var_env, op_env) as env) ret ops = function
   | RVal v -> let x, body = ret in eval_expr (Env.add x v var_env, op_env) body
   | RCont (op_id, v, cont) -> begin
+    let cont' v = handle env ret ops @@ cont v in
     let r =
       List.find_opt
         (fun { op_name; _ } ->
@@ -108,11 +109,11 @@ and handle ((var_env, op_env) as env) ret ops = function
         ops
     in
     match r with
-    | None -> RCont (op_id, v, (fun v -> handle env ret ops @@ cont v))
+    | None -> RCont (op_id, v, cont')
     | Some { op_arg_var; op_cont_var; op_body; _ } ->
       let var_env' =
         Env.add op_arg_var v @@
-        Env.add op_cont_var (VFun cont) @@
+        Env.add op_cont_var (VFun cont') @@
         var_env
       in
       eval_expr (var_env', op_env) op_body
