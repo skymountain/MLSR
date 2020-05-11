@@ -124,7 +124,7 @@ Operation clauses o ::= op x k -> e
 
 ## Examples
 
-The following examples code can be found at `example.mlsr` in the root
+The following examples can also be found at `example.mlsr` in the root
 directory.
 
 ### Functions
