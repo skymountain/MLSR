@@ -30,6 +30,7 @@ follow the signature restriction) in a type-safe manner (Section 6).
 * `dune` (>= 2.5)
 * `menhir`
 * `ppx_deriving` (>= 4.4.1)
+* `ounit2` (>= 2.2.2) (for tests)
 
 ### Building from source code
 
