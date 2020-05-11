@@ -60,9 +60,9 @@ $ rlwrap mlsr
 #### Disabling signature restriction
 
 Checking the signature restriction can be disabled by specifying the option
-`--disable-signature-restriction` in starting up the interpreter.  Note that this
-option makes type-unsafe programs well typed badly; see [here](#disable-SR) for
-detail.
+`--disable-signature-restriction` in starting up the interpreter.  Note that
+this option makes type-unsafe programs well typed badly; see
+[below](<#disabling-the-signature-restriction-(unsafe)>) for detail.
 
 ```bash
 $ mlsr --disable-signature-restriction
@@ -318,7 +318,7 @@ above) not to appear (1) at a non-strictly positive position in the domain type
 (`unit` above) nor (2) at a negative position in the codomain type (`'a -> 'a`
 above).  See [the paper](https://arxiv.org/abs/2003.08138) for detail.
 
-[Disabling the signature restriction](#disable-SR)
+#### Disabling the signature restriction (unsafe)
 
 We can disable the signature restriction by giving option
 `--disable-signature-restriction` to `mlsr`. Then, we can find the (ab)use of
@@ -349,10 +349,10 @@ it may return integer `2` for the lack of any restriction.
 # 1 + 2;;
 # 6 - 4;;
 # 4 * 5;;
-# 7 / 2;;    (* n / 0 triggers a run-time error *)
-# 11 % 3;;   (* n % 0 triggers a run-time error *)
+# 7 / 2;;    (* n / 0 will cause a run-time error *)
+# 11 % 3;;   (* n % 0 will cause a run-time error *)
 
-(* Floating-numbers *)
+(* Floating-point numbers *)
 # 1.1 +. 2.4;;
 # 5.8 -. 1.7;;
 # 4.2 *. 2.;;
@@ -366,7 +366,7 @@ it may return integer `2` for the lack of any restriction.
 (* Strings *)
 # "foo" ^ "bar";;
 # str_len "foo";;
-# str_sub "foobar" 1 3;;  (* invalid arguments trigger a run-time error *)
+# str_sub "foobar" 1 3;;  (* invalid arguments will cause a run-time error *)
 
 (* Lists *)
 # [];;
@@ -382,5 +382,5 @@ it may return integer `2` for the lack of any restriction.
 # "foo" <= "bar";;
 
 (* Sequential composition *)
-# 1; (fun x -> x);;
+# 1; true;;
 ```
