@@ -1,0 +1,145 @@
+(*************)
+(* Functions *)
+(*************)
+
+let plus42 = fun x -> x + 42;;
+plus42 1;;
+
+let plus42 x = x + 42;;
+plus42 3;;
+
+let rec fact n = if n = 0 then 1 else n * fact (n - 1);;
+fact 10;;
+
+
+(********************)
+(* Let-polymorphism *)
+(********************)
+
+let id x = x;;
+id true;;
+id 0;;
+
+let f x = x in (f true, f 0);;
+
+let f = id id in (f "foo", f 1);;
+
+
+(********************************)
+(* Pairs, inejctions, and lists *)
+(********************************)
+
+let x = (1, "foo");;
+match x with (y, z) -> y + str_len z;;  (* str_len returns the length of a string *)
+
+let f x = match x with inl x -> x = 0 | inr y -> y;;
+f (inl 5);;
+f (inr true);;
+
+let rec length x = match x with [] -> 0 | y::ys -> 1 + length ys;;
+length [true];;
+length [1;2;3];;
+
+
+(*****************************)
+(* Algebraic effect handlers *)
+(*****************************)
+
+effect select : 'a . 'a list => 'a;;
+select;;
+
+(** The following code is commented out
+    because it raises exception "Uncaught continuation" **)
+(* select [1;2;3];; *)
+
+handle 42 + select [1;2;3] with {
+  return x -> x
+| select x k -> (match x with [] -> -1 | y::ys -> k y)
+};;
+
+handle 42 with { return x -> x * 10 };;
+handle 42 + select [1;2;3] with {
+  return x -> x * 10
+| select x k -> (match x with [] -> -1 | y::ys -> k y)
+};;
+
+let rec map f l = match l with [] -> [] | x::xs -> (f x) :: (map f xs);;
+let rec append l m = match l with [] -> m | x::xs -> x :: (append xs m);;
+let rec flatten l = match l with [] -> [] | x::xs -> append x (flatten xs);;
+handle 42 + select [1;2;3] with { return x -> [x] | select x k -> flatten (map k x) };;
+
+(** The following expression involves a typing error **)
+(* handle 42 with { return x -> x | select x k -> x };; *)
+
+
+effect fail : 'a. unit => 'a;;
+let f xs ys = handle
+    let x = select xs in
+    let y = select ys in
+    if y = 0 then fail () else x / y
+  with {
+    return z -> [z]
+  | select x k -> flatten (map k x)
+  | fail x k -> []
+  };;
+
+f [42; 12; 6] [3;2;0];;
+
+
+(*************************)
+(* Signature restriction *)
+(*************************)
+
+(** The signature restriction has to be disabled
+    to typecheck the following code **)
+
+(* effect get_id : 'a. unit => 'a -> 'a;; *)
+
+(* handle let f = get_id () in f 2; (f true) && false with { *)
+(*   return x -> x *)
+(* | get_id x k -> k (fun y -> k (fun z -> y); y) *)
+(* };; *)
+
+
+(****************************************)
+(* Complete list of primitive functions *)
+(****************************************)
+
+(** Integers **)
+1 + 2;;
+6 - 4;;
+4 * 5;;
+7 / 2;;    (* n / 0 will cause a run-time error *)
+11 % 3;;   (* n % 0 will cause a run-time error *)
+
+(** Floating-point numbers **)
+1.1 +. 2.4;;
+5.8 -. 1.7;;
+4.2 *. 2.;;
+4.5 /. 1.5;;
+
+(** Booleans **)
+true && false;;
+false || true;;
+if 1 = 2 then 3 else 4;;
+
+(** Strings **)
+"foo" ^ "bar";;
+str_len "foo";;
+str_sub "foobar" 1 3;;  (* invalid arguments will cause a run-time error *)
+
+(** Lists **)
+[];;
+1 :: 2 :: [];;
+[1.; 2.; 3.];;
+
+(** Polymorphic comparison; comparing functions will fail  **)
+1 = 2;;
+1 <> 2;;
+1.1 > 1.1;;
+1.1 >= 1.1;;
+"foo" < "bar";;
+"foo" <= "bar";;
+
+(** Sequential composition **)
+1; true;;

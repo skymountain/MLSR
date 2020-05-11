@@ -73,7 +73,7 @@ $ mlsr --disable-signature-restriction
 The following command will run all of the tests in the directory `test`.
 
 ```bash
-dune runtest
+$ dune runtest
 ```
 
 ## Syntax
@@ -124,17 +124,20 @@ Operation clauses o ::= op x k -> e
 
 ## Examples
 
+The following examples code can be found at `example.mlsr` in the root
+directory.
+
 ### Functions
 
 ```ocaml
 # let plus42 = fun x -> x + 42;;
-val plus42 : (int) -> (int) = <fun>
+val plus42 : int -> int = <fun>
 
-# plus42 1 ;;
+# plus42 1;;
 val - : int = 43
 
 # let plus42 x = x + 42;;
-val plus42 : (int) -> (int) = <fun>
+val plus42 : int -> int = <fun>
 
 # plus42 3;;
 val - : int = 45
@@ -142,7 +145,7 @@ val - : int = 45
 
 ```ocaml
 # let rec fact n = if n = 0 then 1 else n * fact (n - 1);;
-val fact : (int) -> (int) = <fun>
+val fact : int -> int = <fun>
 
 # fact 10;;
 val - : int = 3628800
@@ -152,7 +155,7 @@ val - : int = 3628800
 
 ```ocaml
 # let id x = x;;
-val id : ('a) -> ('a) = <fun>
+val id : 'a -> 'a = <fun>
 
 # id true;;
 val - : bool = true
@@ -160,14 +163,14 @@ val - : bool = true
 # id 0;;
 val - : int = 0
 
-# let f x = x in (f true, f 0)
-val - : (bool) * (int) = (true, 0)
+# let f x = x in (f true, f 0);;
+val - : bool * int = (true, 0)
 ```
 
 MLSR is free from the value restriction.
 ``` ocaml
 # let f = id id in (f "foo", f 1);;
-val - : (string) * (int) = ("foo", 1)
+val - : string * int = ("foo", 1)
 ```
 The value restriction does not accept the expression above because
 `f` could not have a polymorphic type under it.
@@ -176,7 +179,7 @@ The value restriction does not accept the expression above because
 
 ```ocaml
 # let x = (1, "foo");;
-val x : (int) * (string) = (1, "foo")
+val x : int * string = (1, "foo")
 
 # match x with (y, z) -> y + str_len z;;  (* str_len returns the length of a string *)
 val - : int = 4
@@ -184,7 +187,7 @@ val - : int = 4
 
 ```ocaml
 # let f x = match x with inl x -> x = 0 | inr y -> y;;
-val f : ((int) + (bool)) -> (bool) = <fun>
+val f : int + bool -> bool = <fun>
 
 # f (inl 5);;
 val - : bool = false
@@ -195,7 +198,7 @@ val - : bool = true
 
 ```ocaml
 # let rec length x = match x with [] -> 0 | y::ys -> 1 + length ys;;
-val length : (('a) list) -> (int) = <fun>
+val length : 'a list -> int = <fun>
 
 # length [true];;
 val - : int = 1
@@ -213,10 +216,10 @@ To invoke effects in MLSR, we first need to declare effect operations.
    which can be referred to as a variable of polymorphic type 'a list -> 'a *)
 
 # effect select : 'a . 'a list => 'a;;
-effect select is defined
+effect select : 'a list -> 'a defined
 
 # select;;
-val - : (('a) list) -> ('a) = <fun>
+val - : 'a list -> 'a = <fun>
 
 (* The following expression is well typed
    but its evaluation terminates at the "Uncaught continuation" error as expected *)
@@ -240,7 +243,7 @@ val - : int = 43
 The return clause handles the evaluation result of the handled expression.
 
 ```ocaml
-# handle 42 with { return x -> x * 10 }
+# handle 42 with { return x -> x * 10 };;
 val - : int = 420
 ```
 
@@ -262,16 +265,16 @@ We also can collect all of the values computed with elements in the list.
 
 ```ocaml
 # let rec map f l = match l with [] -> [] | x::xs -> (f x) :: (map f xs);;
-val map : (('a) -> ('b)) -> ((('a) list) -> (('b) list)) = <fun>
+val map : ('a -> 'b) -> 'a list -> 'b list = <fun>
 
 # let rec append l m = match l with [] -> m | x::xs -> x :: (append xs m);;
-val append : (('a) list) -> ((('a) list) -> (('a) list)) = <fun>
+val append : 'a list -> 'a list -> 'a list = <fun>
 
 # let rec flatten l = match l with [] -> [] | x::xs -> append x (flatten xs);;
-val flatten : ((('a) list) list) -> (('a) list) = <fun>
+val flatten : 'a list list -> 'a list = <fun>
 
 # handle 42 + select [1;2;3] with { return x -> [x] | select x k -> flatten (map k x) };;
-val - : (int) list = (43) :: (44) :: (45) :: []
+val - : int list = [43; 44; 45]
 ```
 
 In the operation clause, `x` is assigned type `'a list` where `'a` is a locally
@@ -285,7 +288,7 @@ Typing error: Type variables bound in an operation clause cannot be escaped
 Handlers can deal with two or more operation clauses.
 ```ocaml
 # effect fail : 'a. unit => 'a;;
-effect fail is defined
+effect fail : unit -> 'a defined
 
 # let f xs ys = handle
       let x = select xs in
@@ -296,10 +299,10 @@ effect fail is defined
     | select x k -> flatten (map k x)
     | fail x k -> []
     };;
-val f : ((int) list) -> (((int) list) -> ((int) list)) = <fun>
+val f : int list -> int list -> int list = <fun>
 
 # f [42; 12; 6] [3;2;0];;
-val - : (int) list = (14) :: (21) :: (4) :: (6) :: (2) :: (3) :: []
+val - : int list = [14; 21; 4; 6; 2; 3]
 ```
 
 ### Signature restriction

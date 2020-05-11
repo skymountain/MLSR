@@ -86,6 +86,7 @@ rule main = parse
   | "*."     { ASTERISK_DOT }
   | "-."     { MINUS_DOT }
   | "/."     { SLASH_DOT }
+  | "(*"     { skip_comment lexbuf; main lexbuf }
   | int      { LITERAL_INT (int_of_string (Lexing.lexeme lexbuf)) }
   | float    { LITERAL_FLOAT (float_of_string (Lexing.lexeme lexbuf)) }
   | id       { ID (Lexing.lexeme lexbuf) }
@@ -99,3 +100,8 @@ and read_string buf = parse
   | [^ '"' '\\'] { Buffer.add_string buf (Lexing.lexeme lexbuf);
                    read_string buf lexbuf }
   | eof          { Syntax.err "String is not terminated with '\"'" }
+
+and skip_comment = parse
+  | "*)"         { () }
+  | _            { skip_comment lexbuf }
+  | eof          { Syntax.err "EOF was input before some comment termiantes with \"*)\"" }
