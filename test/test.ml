@@ -244,6 +244,10 @@ let primitive_tests = "primitive functions" >::: List.map test [
 ;;
 
 let effect_tests = "effects & handlers" >::: List.map test [
+    ("op",
+     "effect op : 'a . 'a -> 'a => 'a;; op",
+     "<fun>",
+     "('a -> 'a) -> 'a");
     ("fail",
      "effect fail : 'a . unit => 'a;; fail",
      "<fun>",
@@ -268,6 +272,11 @@ let effect_tests = "effects & handlers" >::: List.map test [
      "effect op : 'a . (unit -> 'a) -> unit => unit;; op",
      "<fun>",
      "((unit -> 'a) -> unit) -> unit");
+
+    ("id-handle",
+     "effect op : 'a . 'a => 'a;; \
+      handle op 42 with { return x -> x | op x k -> k x }",
+     "42", "int");
 
     ("select-handle",
      "effect select : 'a . 'a list => 'a;; \
@@ -318,6 +327,14 @@ let effect_tests = "effects & handlers" >::: List.map test [
       with { return x -> [x] | select x k -> flatten (map k x) } \
       with { return x -> x | fail x k -> [] }",
      "[]", "int list");
+
+    ("dup op",
+     "effect op : 'a . 'a => 'a;; \
+      let f x = op x;; \
+      let h g = handle g () with { return x -> x | op x k -> k x };; \
+      effect op : bool => bool;; \
+      handle 42 = h (fun _ -> f 42) with { return x -> x | op x k -> false }",
+     "true", "bool");
   ]
 ;;
 
@@ -350,10 +367,15 @@ let effect_syntax_fail_tests = "effects & handlers (sytnax failure)" >:::
 let effect_cont_fail_tests = "effects & handlers (continuation failure)" >:::
   List.map test_cont_failure [
     ("cont 1", "effect op : unit => unit;; op ()");
-    ("cont 2", "effect op : 'a . 'a => 'a;; op 1");
+    ("cont 2", "effect op : 'a . 'a => 'a;; (fun x -> op x) 1");
     ("cont 3",
      "effect op : 'a . 'a => 'a;; \
       (handle (fun x y -> op (x+y)) 1 with { return x -> x | op x k -> k x }) 2");
+    ("dup op",
+     "effect op : 'a . 'a => 'a;; \
+      let f x = op x;; \
+      effect op : bool => bool;;
+      handle f 42 with { return x -> true | op x k -> x && true }");
   ]
 ;;
 
