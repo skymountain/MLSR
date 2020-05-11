@@ -11,9 +11,9 @@ languages (or fragments) and is adopted by other many ML-like languages
 including OCaml, Standard ML, Koka, etc.&mdash;thanks to the signature
 restriction.  The details including formalization and metatheory are found at:
 
-* Taro Sekiyama Tsukada Takeshi, Atsushi Igarashi: Signature restriction for
+* Taro Sekiyama, Takeshi Tsukada, and Atsushi Igarashi: Signature restriction for
   polymorphic algebraic effects.  Conditionally accepted at ICFP 2020.
-  https://arxiv.org/abs/2003.08138
+  Preprint: https://arxiv.org/abs/2003.08138
 
 This artifact expects all effect operations follow the signature restriction (as
 in Sections 4 & 5 of our paper), and does _not_ support the type-and-effect
