@@ -13,16 +13,8 @@ type handler_clause =
   | Return of S.Id.t * S.expr
   | Operation of S.op_clause
 
-(* let cur_tyvar_index = ref 0 *)
-(* ;; *)
-
 let tyvar_env = ref IdMap.empty
 ;;
-
-(* let gen_fresh_tyvar () = *)
-(*   cur_tyvar_index := !cur_tyvar_index + 1; *)
-(*   !cur_tyvar_index *)
-(* ;; *)
 
 let init () =
   tyvar_env := IdMap.empty
@@ -40,9 +32,9 @@ let lookup_bound_tyvar m tyvar =
 ;;
 
 (* let lookup_or_assign_tyvar tyvar = *)
-(*   match StrMap.find_opt tyvar !tyvar_env with *)
-(*   | None -> let x = gen_fresh_tyvar () in *)
-(*             tyvar_env := StrMap.add tyvar x !tyvar_env; *)
+(*   match IdMap.find_opt tyvar !tyvar_env with *)
+(*   | None -> let x = T.fresh_tyvar_id () in *)
+(*             tyvar_env := IdMap.add tyvar x !tyvar_env; *)
 (*             x *)
 (*   | Some x -> x *)
 (* ;; *)
@@ -122,9 +114,10 @@ let check_pattern_vars vars =
 %nonassoc below_SEMICOLON
 %right SEMICOLON
 %nonassoc above_SEMICOLON
-%right DOUBLE_COLON
+%left COMMA
 %right DOUBLE_VERTICAL_BAR
 %right DOUBLE_AMPERSAND
+%right DOUBLE_COLON
 %left EQUAL LESS LESS_EQUAL GREAT GREAT_EQUAL LESS_GREAT
 %right CARET
 %left PLUS MINUS PLUS_DOT MINUS_DOT
@@ -133,6 +126,7 @@ let check_pattern_vars vars =
 
 
 %start <Syntax.decl option> main
+(* %start <Type.ty_scheme> tysc_main *)
 
 %%
 
@@ -160,9 +154,7 @@ expr:
   | FUN; params = nonempty_param_list; RIGHT_ARROW; e = expr_below_semi
     { fun_with_params params e }
   | HANDLE; e = expr; WITH; h = handler_expr { S.EHandle (e, h) }
-  | LEFT_PAREN; f = expr; COMMA; s = expr; RIGHT_PAREN { S.EPair (f, s) }
-  | INL; e = binary_op_expr { S.EInl e }
-  | INR; e = binary_op_expr { S.EInr e }
+  | f = expr; COMMA; s = expr { S.EPair (f, s) }
   | MATCH; e = expr; WITH; m = match_clause { EMatch (e, m) }
   | IF; ce = expr; THEN; te = expr; ELSE; ee = expr_above_semi
     { S.EIf (ce, te, ee) }
@@ -186,6 +178,8 @@ binary_op_expr:
 
 app_expr:
   | e1 = app_expr; e2 = simple_expr { S.EApp (e1, e2) }
+  | INL; e = simple_expr { S.EInl e }
+  | INR; e = simple_expr { S.EInr e }
   | e = simple_expr { e }
 
 simple_expr:
@@ -293,6 +287,14 @@ ty_signature:
 ty_signature_mono:
   | dom_ty = ty_mono; DOUBLE_RIGHT_ARROW; codom_ty = ty_mono
     { (dom_ty, codom_ty) }
+
+(* tysc_main: *)
+(*   | t = ty_mono; EOF *)
+(*     { *)
+(*       init (); *)
+(*       let ty = t lookup_or_assign_tyvar in *)
+(*       T.closing Env.empty ty *)
+(*     } *)
 
 ty_mono:
   | t1 = ty_mono; RIGHT_ARROW; t2 = ty_mono

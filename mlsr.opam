@@ -14,4 +14,5 @@ depends: [
   "dune" { >= "2.5" }
   "menhir"
   "ppx_deriving" { >= "4.4.1" }
+  "ounit2" { >= "2.2.2" }
 ]

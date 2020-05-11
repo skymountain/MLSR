@@ -11,15 +11,21 @@ let rec read_eval_print lexbuf env tyenv =
     match Parser.main Lexer.main lexbuf with
     | None -> print_endline "Termianted."
     | Some d ->
-      let tyenv', typing_msg = Typing.type_decl tyenv d in
+      let tyenv', tysc = Typing.type_decl tyenv d in
       let env', v_opt = Eval.eval_decl env d in
-      print_endline @@
-        Option.fold v_opt
-          ~none:typing_msg
-          ~some:(fun v ->
-              Printf.sprintf "val %s = %s"
-                typing_msg
-                (Syntax.string_of_value v));
+      let msg =
+        let tysc_str = Type.string_of_tysc tysc in
+        match d with
+        | DExpr _ ->
+          Printf.sprintf "val - : %s = %s" tysc_str
+            (Syntax.string_of_value @@ Option.get v_opt)
+        | DLet (x, _) ->
+          Printf.sprintf "val %s : %s = %s" x tysc_str
+            (Syntax.string_of_value @@ Option.get v_opt)
+        | DEff (op_name, _) ->
+          Printf.sprintf "effect %s : %s defined" op_name tysc_str
+      in
+      print_endline msg;
       read_eval_print lexbuf env' tyenv'
   with
   | Syntax.Error msg -> resume @@ "Syntax error: " ^ msg

@@ -43,21 +43,19 @@ type ty_sig = TyvarSet.t * ty * ty
 ;;
 
 
-let cur_tyvar_id = ref 0
-;;
-
-let incr_tyvar_id () =
-  cur_tyvar_id := !cur_tyvar_id + 1
+let fresh_tyvar_id =
+  let cur_tyvar_id = ref 0 in
+  fun () ->
+    cur_tyvar_id := !cur_tyvar_id + 1;
+    !cur_tyvar_id
 ;;
 
 let fresh_tyvar () =
-  incr_tyvar_id ();
-  TyVar !cur_tyvar_id
+  TyVar (fresh_tyvar_id ())
 ;;
 
 let fresh_fixed_tyvar () =
-  incr_tyvar_id ();
-  TyVarFixed !cur_tyvar_id
+  TyVarFixed (fresh_tyvar_id ())
 ;;
 
 let tysc_of_ty ty = (TyvarSet.empty, ty)

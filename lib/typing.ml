@@ -301,14 +301,12 @@ let type_decl ((var_env, op_env) as env) =
   | S.DExpr e ->
     let ty, _ = type_expr env e in
     let tysc = T.closing var_env ty in
-    let msg = Printf.sprintf "- : %s" (T.string_of_tysc tysc) in
-    (env, msg)
+    (env, tysc)
   | S.DLet (x, e) ->
     let ty, _ = type_expr env e in
     let tysc = T.closing var_env ty in
-    let msg = Printf.sprintf "%s : %s" x (T.string_of_tysc tysc) in
     let env' = (Env.add x tysc var_env, op_env) in
-    (env', msg)
+    (env', tysc)
   | S.DEff (op_name, ((tyvars, dom_ty, codom_ty) as ty_sig)) ->
     match signature_restriction ty_sig with
     | Some blame ->
@@ -317,12 +315,11 @@ let type_decl ((var_env, op_env) as env) =
           "The type signature does not follow the signature restriction on %s"
           blame
     | None ->
-      let msg = Printf.sprintf "effect %s is defined" op_name in
       let tysc = T.closing var_env @@
         T.instantiate (tyvars, T.TyFun (dom_ty, codom_ty))
       in
       let env' =
         (Env.add op_name tysc var_env, Env.add op_name ty_sig op_env)
       in
-      (env', msg)
+      (env', tysc)
 ;;
