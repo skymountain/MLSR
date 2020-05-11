@@ -62,7 +62,7 @@ $ rlwrap mlsr
 Checking the signature restriction can be disabled by specifying the option
 `--disable-signature-restriction` in starting up the interpreter.  Note that
 this option makes type-unsafe programs well typed badly; see
-[below](<#disabling-the-signature-restriction-(unsafe)>) for detail.
+[below](#disabling-the-signature-restriction-unsafe) for detail.
 
 ```bash
 $ mlsr --disable-signature-restriction
