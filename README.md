@@ -15,6 +15,11 @@ restriction.  The details including formalization and metatheory are found at:
   polymorphic algebraic effects.  Conditionally accepted at ICFP 2020.
   https://arxiv.org/abs/2003.08138
 
+This artifact expects all effect operations follow the signature restriction (as
+in Sections 4 & 5 of our paper), and does _not_ support the type-and-effect
+system to reconcile safe and unsafe effects (i.e., operations that do and do not
+follow the signature restriction) in a type-safe manner (Section 6).
+
 
 ## Getting started
 
@@ -31,9 +36,6 @@ restriction.  The details including formalization and metatheory are found at:
 ```bash
 $ dune build
 $ ./_build/install/default/bin/mlsr
-
-# disables the check of signature restriction
-$ ./_build/install/default/bin/mlsr --disable-signaure-restriction
 ```
 
 ### Installation via opam
@@ -43,9 +45,36 @@ $ opam install .
 $ mlsr
 ```
 
-### Running on Docker
+### Tips
 
-[TODO]
+#### User-firendly interface
+
+Our interpreter does not support user-friendly line editing and input history
+search directly, but one can make use of such features via
+[rlwrap](https://github.com/hanslub42/rlwrap).
+
+```bash
+$ rlwrap mlsr
+```
+
+#### Disabling signature restriction
+
+Checking the signature restriction can be disabled by specifying the option
+`--disable-signature-restriction` in starting up the interpreter.  Note that this
+option makes type-unsafe programs well typed badly; see [here](#disable-SR) for
+detail.
+
+```bash
+$ mlsr --disable-signature-restriction
+```
+
+#### Running tests
+
+The following command will run all of the tests in the directory `test`.
+
+```bash
+dune runtest
+```
 
 ## Syntax
 
@@ -289,6 +318,8 @@ above) not to appear (1) at a non-strictly positive position in the domain type
 (`unit` above) nor (2) at a negative position in the codomain type (`'a -> 'a`
 above).  See [the paper](https://arxiv.org/abs/2003.08138) for detail.
 
+[Disabling the signature restriction](#disable-SR)
+
 We can disable the signature restriction by giving option
 `--disable-signature-restriction` to `mlsr`. Then, we can find the (ab)use of
 `get_id` gives rise to an undesired run-time error (as expected).
@@ -312,4 +343,44 @@ Here, `f true` is expected to return a Boolean, but at run-time
 it may return integer `2` for the lack of any restriction.
 
 ### Complete list of primitive functions
-[TODO]
+
+```ocaml
+(* Integers *)
+# 1 + 2;;
+# 6 - 4;;
+# 4 * 5;;
+# 7 / 2;;    (* n / 0 triggers a run-time error *)
+# 11 % 3;;   (* n % 0 triggers a run-time error *)
+
+(* Floating-numbers *)
+# 1.1 +. 2.4;;
+# 5.8 -. 1.7;;
+# 4.2 *. 2.;;
+# 4.5 /. 1.5;;
+
+(* Booleans *)
+# true && false;;
+# false || true;;
+# if 1 = 2 then 3 else 4;;
+
+(* Strings *)
+# "foo" ^ "bar";;
+# str_len "foo";;
+# str_sub "foobar" 1 3;;  (* invalid arguments trigger a run-time error *)
+
+(* Lists *)
+# [];;
+# 1 :: 2 :: [];;
+# [1.; 2.; 3.];;
+
+(* Polymorphic comparison; comparing functions will fail  *)
+# 1 = 2;;
+# 1 <> 2;;
+# 1.1 > 1.1;;
+# 1.1 >= 1.1;;
+# "foo" < "bar";;
+# "foo" <= "bar";;
+
+(* Sequential composition *)
+# 1; (fun x -> x);;
+```
