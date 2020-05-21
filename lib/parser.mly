@@ -158,7 +158,9 @@ expr:
   | MATCH; e = expr; WITH; m = match_clause { EMatch (e, m) }
   | IF; ce = expr; THEN; te = expr; ELSE; ee = expr_above_semi
     { S.EIf (ce, te, ee) }
-  | e = binary_op_expr { e }
+  | e1 = expr; op = binary_op; e2 = expr
+    { EApp (EApp (EId op, e1), e2) }
+  | e = app_expr { e }
 
 expr_below_semi:
   | e = expr { e } %prec below_SEMICOLON
@@ -170,11 +172,6 @@ list_expr:
   | { [] }
   | e = expr { [e] }
   | e = expr_above_semi; SEMICOLON; es = list_expr { e::es }
-
-binary_op_expr:
-  | e1 = binary_op_expr; op = binary_op; e2 = binary_op_expr
-    { EApp (EApp (EId op, e1), e2) }
-  | e = app_expr { e }
 
 app_expr:
   | e1 = app_expr; e2 = simple_expr { S.EApp (e1, e2) }
