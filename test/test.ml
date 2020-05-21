@@ -171,7 +171,7 @@ let inj_tests = "injections" >::: List.map test [
     ("inr",
      "inr (fun x -> x)",
      "inr <fun>",
-     "'b + ('a -> 'a)");
+     "'a + ('b -> 'b)");
     ("inj-match",
      "let f x = match x with inl x -> x * 10 | inr y -> y true",
      "<fun>",

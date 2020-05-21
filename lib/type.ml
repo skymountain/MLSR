@@ -194,74 +194,103 @@ let preference_of_ty_cnstr = function
   | TyFun _ -> -4
 ;;
 
-
 (* Wrap with paranthesises only when type constructors of subcompoents
    are assigned lower prefeference *)
-let rec _string_of_ty bound_m free_m =
-  let find x =
-    match TyvarMap.find_opt x bound_m with
-    | None -> TyvarMap.find x free_m
-    | Some letter -> letter
+let _string_of_ty =
+  let letter =
+    let a = int_of_char 'a' in
+    let z = int_of_char 'z' in
+    let n = z - a + 1 in
+    fun idx ->
+      let pre = char_of_int (a + (idx mod n)) in
+      let suff = idx / n in
+      let suff = if suff = 0 then "" else string_of_int suff in
+      Printf.sprintf "%c%s" pre suff
   in
+
+  let find prefix x bound_tyvars bound_m free_m =
+    let return s = prefix ^ s in
+    match TyvarMap.find_opt x bound_m with
+
+    (* bound variable (in bound_m) *)
+    | Some l -> (return l, bound_m, free_m)
+
+    (* bound variable (not in bound_m yet) *)
+    | None when TyvarSet.mem x bound_tyvars ->
+      let l = letter @@ TyvarMap.cardinal bound_m in
+      let bound_m' = TyvarMap.add x l bound_m in
+      (return l, bound_m', free_m)
+
+    (* free variable *)
+    | None -> begin
+        match TyvarMap.find_opt x free_m with
+        (* in free_m *)
+        | Some l -> (return @@ "_weak" ^ l, bound_m, free_m)
+        (* not in free_m yet *)
+        | None ->
+          let l = string_of_int (1 + TyvarMap.cardinal free_m) in
+          let free_m' = TyvarMap.add x l free_m in
+          (return @@ "_weak" ^ l, bound_m, free_m')
+      end
+  in
+
   let paren p s =
     let format : ('a->'b, unit, string) format = if p then "(%s)" else "%s" in
     Printf.sprintf format s
   in
-  let self ty = _string_of_ty bound_m free_m ty in
-  fun ty ->
+
+  let (let*)
+      iter (* partially applied iter *)
+      k    (* continuation *)
+      bound_tyvars bound_m free_m =
+    let s, bound_m', free_m' = iter bound_tyvars bound_m free_m in
+    k s bound_tyvars bound_m' free_m'
+  in
+
+  let return s _ bound_m free_m = (s, bound_m, free_m) in
+
+  (* main function *)
+  let rec iter ty =
     let p = preference_of_ty_cnstr ty in
     match ty with
-    | TyVar x ->
-      Printf.sprintf "'%s" @@ find x
-    | TyVarFixed x -> Printf.sprintf "@%s" @@ find x
-    | TyBase b -> string_of_bty b
+    | TyVar x -> find "'" x
+    | TyVarFixed x -> find "@" x
+    | TyBase b -> return @@ string_of_bty b
     | TyFun (arg, ret) ->
       (* right-associative *)
-      let arg_str = paren (preference_of_ty_cnstr arg <= p) (self arg) in
-      let ret_str = paren (preference_of_ty_cnstr ret < p) (self ret) in
-      Printf.sprintf "%s -> %s" arg_str ret_str
+      let* arg_str = iter arg in
+      let arg_str' = paren (preference_of_ty_cnstr arg <= p) arg_str in
+      let* ret_str = iter ret in
+      let ret_str' = paren (preference_of_ty_cnstr ret < p) ret_str in
+      return @@ Printf.sprintf "%s -> %s" arg_str' ret_str'
     | TyProd (f, s) ->
       (* left-associative *)
-      let fst_str = paren (preference_of_ty_cnstr f < p) (self f) in
-      let snd_str = paren (preference_of_ty_cnstr s <= p) (self s) in
-      Printf.sprintf "%s * %s" fst_str snd_str
+      let* fst_str = iter f in
+      let fst_str' = paren (preference_of_ty_cnstr f < p) fst_str in
+      let* snd_str = iter s in
+      let snd_str' = paren (preference_of_ty_cnstr s <= p) snd_str in
+      return @@ Printf.sprintf "%s * %s" fst_str' snd_str'
     | TySum (l, r) ->
       (* left-associative *)
-      let left_str = paren (preference_of_ty_cnstr l < p) (self l) in
-      let right_str = paren (preference_of_ty_cnstr r <= p) (self r) in
-      Printf.sprintf "%s + %s" left_str right_str
+      let* left_str = iter l in
+      let left_str' = paren (preference_of_ty_cnstr l < p) left_str in
+      let* right_str = iter r in
+      let right_str' = paren (preference_of_ty_cnstr r <= p) right_str in
+      return @@ Printf.sprintf "%s + %s" left_str' right_str'
     | TyList t ->
-      let str = paren (preference_of_ty_cnstr t < p) (self t) in
-      Printf.sprintf "%s list" @@ str
+      let* str = iter t in
+      let str' = paren (preference_of_ty_cnstr t < p) str in
+      return @@ Printf.sprintf "%s list" str'
+  in
+  iter
 ;;
 
-let string_of_tysc =
-  let n = 26 in
-  let a = int_of_char 'a' in
-  let letter idx =
-    let rec iter buf idx =
-      Buffer.add_char buf @@ char_of_int (a + (idx mod n));
-      let next = idx - n in
-      if next < 0 then Buffer.contents buf
-      else iter buf next
-    in
-    iter (Buffer.create 3) idx
-  in
-  let make_tyvar_map tyvars alphabet_start_idx =
-    fst @@
-    TyvarSet.fold (fun x (m, cur) ->
-        (TyvarMap.add x (letter cur) m, cur + 1))
-      tyvars
-      (TyvarMap.empty, alphabet_start_idx)
-  in
-  fun ((tyvars, ty) as tysc) ->
-    check_validity_of_tysc tysc;
-    let bound_map = make_tyvar_map tyvars 0 in
-    let free_map = make_tyvar_map
-        (TyvarSet.diff (ftv_ty ty) tyvars)
-        (TyvarMap.cardinal bound_map)
-    in
-    _string_of_ty bound_map free_map ty
+let string_of_tysc ((tyvars, ty) as tysc) =
+  check_validity_of_tysc tysc;
+  let s, bound_m, free_m = _string_of_ty ty tyvars TyvarMap.empty TyvarMap.empty in
+  assert (TyvarMap.for_all (fun x _ -> TyvarSet.mem x tyvars) bound_m);
+  assert (TyvarMap.for_all (fun x _ -> not @@ TyvarSet.mem x tyvars) free_m);
+  s
 ;;
 
 let string_of_ty ty = string_of_tysc (TyvarSet.empty, ty)
