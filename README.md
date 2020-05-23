@@ -137,7 +137,10 @@ Expressions e ::= x
                 | fun x y* -> e | e1 e2 |
                 | let x y* = e1 in e2 | let rec f x y* = e1 in e2
                 | ( e1 , e2 ) | inl e | inr e
-                | [] | e1 :: e2 |  ( the empty list and cons; syntax sugar for lists [ e1 ; ... ; en ] is supported *)
+
+                (* the empty list and cons; syntax sugar for lists [ e1 ; ... ; en ] is supported *)
+                | [] | e1 :: e2 |
+
                 | match e with p
                 | if e1 then e2 else e3 | e1 ; e2
                 | handle e with { return x -> x ( \mid o )* }
