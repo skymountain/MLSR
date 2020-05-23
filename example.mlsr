@@ -100,6 +100,16 @@ f [42; 12; 6] [3;2;0];;
 (* | get_id x k -> k (fun y -> k (fun z -> y); y) *)
 (* };; *)
 
+(** The example in Remark 1 **)
+
+(* effect op : 'a. ('a -> int) -> 'a => 'a;; *)
+
+(* let v f x = inr (f (fun y -> inl x));; *)
+(* let n x = match x with inl y -> (if y then 0 else 1) | inr z -> z + 1;; *)
+(* handle let g = op(v) in match g 0 with inl z -> z | inr z -> n (g true) with { *)
+(*     return x -> x *)
+(*   | op x k -> k (x k) *)
+(*   };; *)
 
 (****************************************)
 (* Complete list of primitive functions *)

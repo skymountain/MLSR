@@ -346,6 +346,19 @@ Run-time error: Operator "&&" can be applied only to Booleans
 Here, `f true` is expected to return a Boolean, but at run-time
 it may return integer `2` for the lack of any restriction.
 
+Below is the example in Remark 1 of the paper, showing the need of the
+restriction on domain types.
+```ocaml
+effect op : 'a. ('a -> int) -> 'a => 'a;;
+
+let v f x = inr (f (fun y -> inl x));;
+let n x = match x with inl y -> (if y then 0 else 1) | inr z -> z + 1;;
+handle let g = op(v) in match g 0 with inl z -> z | inr z -> n (g true) with {
+    return x -> x
+  | op x k -> k (x k)
+  };;
+```
+
 ### Complete list of primitive functions
 
 ```ocaml
