@@ -70,7 +70,7 @@ this option makes type-unsafe programs well typed badly; see
 $ mlsr --disable-signature-restriction
 ```
 
-### Examples
+### Example files
 
 The directory `examples` contains the example files listed below.
 
