@@ -51,14 +51,14 @@ $ mlsr
 
 The directory `examples` contains the example files listed below.
 
-- `readme.mlsr` : all of the examples described in [the example section](#examples) below
-- `2.1.mlsr` : the examples in Section 2.1 of our paper
-- `2.2.mlsr` : the example in Section 2.2
-- `2.3.mlsr` : the (ill-typed) example in Section 2.3
-- `4.5_remark1.mlsr` : the (ill-typed) example in Remark 1 (Section 4.5).
+- `readme.mlsr` : All of the examples described in [the example section](#examples) below
+- `2.1.mlsr` : The examples in Section 2.1 of our paper
+- `2.2.mlsr` : The example in Section 2.2
+- `2.3.mlsr` : The (ill-typed) example in Section 2.3
+- `4.5_remark1.mlsr` : The (ill-typed) example in Remark 1 (Section 4.5).
    This example is shown only in the preprint or revised version and not
    contained in the submission.
-- `5.2.mlsr` : the example in Section 5.2
+- `5.2.mlsr` : The example in Section 5.2
 
 Our interpreter does not support file loading directly, but one can run the
 program in a file by:
@@ -96,6 +96,14 @@ The following command will run all of the tests in the directory `test`.
 ```bash
 $ dune runtest
 ```
+
+#### Directories
+
+- `bin` : Entry point of the interpreter
+- `lib` : Implementation of the interpreter
+- `test` : Unit tests
+- `examples` : Examples
+
 
 ## Syntax
 
