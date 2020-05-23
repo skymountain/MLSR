@@ -128,7 +128,8 @@ Expressions e ::= x
                 | c
                 | fun x y* -> e | e1 e2 |
                 | let x y* = e1 in e2 | let rec f x y* = e1 in e2
-                | ( e1 , e2 ) | inl e | inr e | [ e1 ; ... ; en ]
+                | ( e1 , e2 ) | inl e | inr e
+                | [] | e1 :: e2 |  ( the empty list and cons; syntax sugar for lists [ e1 ; ... ; en ] is supported *)
                 | match e with p
                 | if e1 then e2 else e3 | e1 ; e2
                 | handle e with { return x -> x ( \mid o )* }
@@ -145,8 +146,7 @@ Operation clauses o ::= op x k -> e
 
 ## Examples
 
-The following examples can also be found at `example.mlsr` in the root
-directory.
+The following examples can also be found at the file `examples/readme.mlsr`.
 
 ### Functions
 
@@ -354,7 +354,7 @@ $ mlsr --disable-signature-restriction
 
 ```ocaml
 # effect get_id : 'a. unit => 'a -> 'a;;
-effect get_id is defined
+effect get_id : unit -> 'a -> 'a defined
 
 # handle let f = get_id () in f 2; (f true) && false with {
     return x -> x
@@ -369,14 +369,20 @@ it may return integer `2` for the lack of any restriction.
 Below is the example in Remark 1 of the paper, showing the need of the
 restriction on domain types.
 ```ocaml
-effect op : 'a. ('a -> int) -> 'a => 'a;;
+# effect op : 'a. ('a -> int) -> 'a => 'a;;
+effect op : (('a -> int) -> 'a) -> 'a defined
 
-let v f x = inr (f (fun y -> inl x));;
-let n x = match x with inl y -> (if y then 0 else 1) | inr z -> z + 1;;
-handle let g = op(v) in match g 0 with inl z -> z | inr z -> n (g true) with {
+# let v f x = inr (f (fun y -> inl x));;
+val v : (('a -> 'b + 'c) -> 'd) -> 'b -> 'e + 'd = <fun>
+
+# let n x = match x with inl y -> (if y then 0 else 1) | inr z -> z + 1;;
+val n : bool + int -> int = <fun>
+
+# handle let g = op(v) in match g 0 with inl z -> z | inr z -> n (g true) with {
     return x -> x
   | op x k -> k (x k)
   };;
+Run-time error: Operator "+" can be applied only to integers
 ```
 
 ### Complete list of primitive functions
