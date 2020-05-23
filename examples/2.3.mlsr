@@ -1,0 +1,16 @@
+(** The exapmle in Section 2.3 **)
+(**
+   One needs to disable the signature restriction to run the program
+   by specifying the option "--disable-signature-restriction"
+   in starting up the interpreter
+**)
+
+effect get_id : 'a . unit => 'a -> 'a;;
+
+handle
+  let f = get_id () in
+  if (f true) then ((f 0) + 1) else 2
+with {
+    return x -> x
+  | get_id x k -> k (fun z1 -> let _ = k (fun z2 -> z1) in z1)
+};;

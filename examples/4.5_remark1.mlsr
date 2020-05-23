@@ -1,0 +1,16 @@
+(** The exapmle in Remark 1 (Section 4.5) **)
+(**
+   One needs to disable the signature restriction to run the program
+   by specifying the option "--disable-signature-restriction"
+   in starting up the interpreter
+**)
+
+effect op : 'a. ('a -> int) -> 'a => 'a;;
+
+let v f x = inr (f (fun y -> inl x));;
+let n x = match x with inl y -> (if y then 0 else 1) | inr z -> z + 1;;
+
+handle let g = op(v) in match g 0 with inl z -> z | inr z -> n (g true) with {
+  return x -> x
+| op x k -> k (x k)
+};;

@@ -1,0 +1,18 @@
+(** The exapmle in Section 2.2 **)
+
+effect select : 'a . 'a list => 'a;;
+effect fail : 'a . unit => 'a;;
+
+let rec map l f = match l with [] -> [] | x::xs -> (f x) :: (map xs f);;
+let rec append l m = match l with [] -> m | x::xs -> x :: (append xs m);;
+let rec concat l = match l with [] -> [] | x::xs -> append x (concat xs);;
+
+handle
+  let b = select [true; false] in
+  let x = if b then select [2; 3] else select [20; 30] in
+  if x > 20 then fail () else x
+with {
+    return z -> [z]
+  | select l k -> concat (map l (fun y -> k y))
+  | fail z _ -> []
+};;

@@ -1,0 +1,41 @@
+(** The example in Section 5.2 **)
+
+(* `satisfy` meets the signature restriction *)
+effect satisfy : 'a . (string -> ('a * string) + unit) => 'a;;
+
+
+(** Below is a usage example of `satisfy` **)
+
+let first s = str_sub s 0 1;;
+let last s = str_sub s 1 (str_len s - 1);;
+
+(* char is just a string consisting of a single character *)
+let parse_char _ =
+  satisfy (fun x -> if (str_len x) > 0 then inl (first x, last x) else inr ())
+;;
+
+(** `parse s` returns `inl (s1, s2)` if `str_len s` >= 2, where:
+       `s1` is the reverse of the first two characters in `s`; and
+       `s2` is the string obtained by dropping the first two characters from `s`
+
+    If `str_len s` < 1, then it returns `inr ()`
+ **)
+let parse =
+  handle
+    let c1 = parse_char () in
+    let c2 = parse_char () in
+    c2 ^ c1
+  with {
+    return x -> fun s -> inl (x, s)
+  | satisfy f k ->
+      (fun s ->
+         match f s with
+           inl x -> (match x with (res, remain) -> k res remain)
+         | inr _ -> inr ()
+      )
+  }
+;;
+
+parse "abcd";; (* returns `inl ("ba", "cd")` *)
+parse "ab";;   (* returns `inl ("ba", "")` *)
+parse "c";;    (* returns `inr ()` *)

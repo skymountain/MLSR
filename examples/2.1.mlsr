@@ -1,0 +1,39 @@
+(** The exapmles in Section 2.1 **)
+
+effect select : int list => int;;
+effect fail : unit => unit;;
+
+let rec map l f = match l with [] -> [] | x::xs -> (f x) :: (map xs f);;
+let rec append l m = match l with [] -> m | x::xs -> x :: (append xs m);;
+let rec concat l = match l with [] -> [] | x::xs -> append x (concat xs);;
+
+(* The first example *)
+
+let filter l f =
+  handle
+    let x = select l in
+    let _ = if f x then () else fail () in x
+  with {
+    return z -> [z]
+  | select l k -> concat (map l (fun y -> k y))
+  | fail z _ -> []
+  }
+;;
+
+filter [3; 5; 10] (fun x -> x % 2 = 1)
+;;
+
+
+(* The second example *)
+
+handle
+  let x = select [2; 3] in
+  let y = select [10; 20] in
+  let z = x * y in
+  let _ = if z > 50 then fail () else () in
+  z
+with {
+    return z -> [z]
+  | select l k -> concat (map l (fun y -> k y))
+  | fail z _ -> []
+};;

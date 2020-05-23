@@ -16,9 +16,8 @@ our paper:
   for polymorphic algebraic effects.  Conditionally accepted at ICFP 2020.
   Preprint: https://arxiv.org/abs/2003.08138
 
-This artifact implements the extended type system in Sections 4 & 5 of our
-paper, and does _not_ support the type-and-effect system in Section 6 to
-reconcile safe and unsafe effects.
+This artifact is an implementation of the extended type system in Sections 4 & 5
+of our paper, and does _not_ support the type-and-effect system in Section 6.
 
 
 ## Getting started
@@ -69,6 +68,25 @@ this option makes type-unsafe programs well typed badly; see
 
 ```bash
 $ mlsr --disable-signature-restriction
+```
+
+### Examples
+
+The directory `examples` contains the example files listed below.
+
+- `readme.mlsr` : all of the examples described in [the example section](#examples) below
+- `2.1.mlsr` : the examples in Section 2.1
+- `2.2.mlsr` : the example in Section 2.2
+- `2.3.mlsr` : the (ill-typed) example in Section 2.3
+- `4.5_remark1.mlsr` : the (ill-typed) example in Remark 1 (Section 4.5).
+   This example is shown only in the preprint or revised version and not
+   contained in the submission.
+- `5.2.mlsr` : the example in Section 5.2
+
+Our interpreter does not support file loading directly, but one can run the
+program in a file by:
+```bash
+$ cat [file path] | mlsr
 ```
 
 #### Running tests
