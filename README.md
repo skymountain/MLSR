@@ -9,16 +9,16 @@ language, but it does not need to enforce value restriction&mdash;which is
 another approach to reconciling polymorphism and computational effects in CBV
 languages (or fragments) and is adopted by other many ML-like languages
 including OCaml, Standard ML, Koka, etc.&mdash;thanks to the signature
-restriction.  The details including formalization and metatheory are found at:
+restriction.  The details including formalization and metatheory are found at
+our paper:
 
-* Taro Sekiyama, Takeshi Tsukada, and Atsushi Igarashi: Signature restriction for
-  polymorphic algebraic effects.  Conditionally accepted at ICFP 2020.
+* Taro Sekiyama, Takeshi Tsukada, and Atsushi Igarashi: Signature restriction
+  for polymorphic algebraic effects.  Conditionally accepted at ICFP 2020.
   Preprint: https://arxiv.org/abs/2003.08138
 
-This artifact expects all effect operations follow the signature restriction (as
-in Sections 4 & 5 of our paper), and does _not_ support the type-and-effect
-system to reconcile safe and unsafe effects (i.e., operations that do and do not
-follow the signature restriction) in a type-safe manner (Section 6).
+This artifact implements the extended type system in Sections 4 & 5 of our
+paper, and does _not_ support the type-and-effect system in Section 6 to
+reconcile safe and unsafe effects.
 
 
 ## Getting started
@@ -31,6 +31,8 @@ follow the signature restriction) in a type-safe manner (Section 6).
 * `menhir`
 * `ppx_deriving` (>= 4.4.1)
 * `ounit2` (>= 2.2.2) (for tests)
+
+All packages can be installed via [opam](https://opam.ocaml.org/doc/Install.html).
 
 ### Building from source code
 
@@ -114,11 +116,11 @@ Expressions e ::= x
                 | handle e with { return x -> x ( \mid o )* }
 
 Constants c ::= () | true | false | __integers__ | __floating-point numbers__ | __strings__
-               | __primitive operations__   (* see the examples below for detail *)
+              | __primitive operations__   (* see the examples below for detail *)
 
 Pattern clauses p ::= ( x , y ) -> e
-                  | inl x -> e1 \mid inr y -> e2
-                  | [ ] -> e1 \mid x :: y -> e2
+                    | inl x -> e1 \mid inr y -> e2
+                    | [ ] -> e1 \mid x :: y -> e2
 
 Operation clauses o ::= op x k -> e
 ```
@@ -265,16 +267,16 @@ val - : int = 430
 We also can collect all of the values computed with elements in the list.
 
 ```ocaml
-# let rec map f l = match l with [] -> [] | x::xs -> (f x) :: (map f xs);;
-val map : ('a -> 'b) -> 'a list -> 'b list = <fun>
+# let rec map l f = match l with [] -> [] | x::xs -> (f x) :: (map xs f);;
+val map : 'a list -> ('a -> 'b) -> 'b list = <fun>
 
 # let rec append l m = match l with [] -> m | x::xs -> x :: (append xs m);;
 val append : 'a list -> 'a list -> 'a list = <fun>
 
-# let rec flatten l = match l with [] -> [] | x::xs -> append x (flatten xs);;
-val flatten : 'a list list -> 'a list = <fun>
+# let rec concat l = match l with [] -> [] | x::xs -> append x (concat xs);;
+val concat : 'a list list -> 'a list = <fun>
 
-# handle 42 + select [1;2;3] with { return x -> [x] | select x k -> flatten (map k x) };;
+# handle 42 + select [1;2;3] with { return x -> [x] | select x k -> concat (map x k) };;
 val - : int list = [43; 44; 45]
 ```
 
@@ -297,7 +299,7 @@ effect fail : unit -> 'a defined
       if y = 0 then fail () else x / y
     with {
       return z -> [z]
-    | select x k -> flatten (map k x)
+    | select x k -> concat (map x k)
     | fail x k -> []
     };;
 val f : int list -> int list -> int list = <fun>
@@ -382,8 +384,15 @@ handle let g = op(v) in match g 0 with inl z -> z | inr z -> n (g true) with {
 
 (* Strings *)
 # "foo" ^ "bar";;
-# str_len "foo";;
-# str_sub "foobar" 1 3;;  (* invalid arguments will cause a run-time error *)
+
+(** `str_len s` returns the length of string `s` **)
+# str_len "foo";; 
+
+(** `str_sub s start len` returns the substring of `s`
+    that starts at position `start` and has length `len`.
+    Invalid arguments will cause a run-time error.
+**)
+# str_sub "foobar" 1 3;;
 
 (* Lists *)
 # [];;
