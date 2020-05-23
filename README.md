@@ -47,6 +47,25 @@ $ opam install .
 $ mlsr
 ```
 
+### Example files
+
+The directory `examples` contains the example files listed below.
+
+- `readme.mlsr` : all of the examples described in [the example section](#examples) below
+- `2.1.mlsr` : the examples in Section 2.1 of our paper
+- `2.2.mlsr` : the example in Section 2.2
+- `2.3.mlsr` : the (ill-typed) example in Section 2.3
+- `4.5_remark1.mlsr` : the (ill-typed) example in Remark 1 (Section 4.5).
+   This example is shown only in the preprint or revised version and not
+   contained in the submission.
+- `5.2.mlsr` : the example in Section 5.2
+
+Our interpreter does not support file loading directly, but one can run the
+program in a file by:
+```bash
+$ cat [file path] | mlsr
+```
+
 ### Tips
 
 #### User-firendly interface
@@ -68,25 +87,6 @@ this option makes type-unsafe programs well typed badly; see
 
 ```bash
 $ mlsr --disable-signature-restriction
-```
-
-### Example files
-
-The directory `examples` contains the example files listed below.
-
-- `readme.mlsr` : all of the examples described in [the example section](#examples) below
-- `2.1.mlsr` : the examples in Section 2.1 of our paper
-- `2.2.mlsr` : the example in Section 2.2
-- `2.3.mlsr` : the (ill-typed) example in Section 2.3
-- `4.5_remark1.mlsr` : the (ill-typed) example in Remark 1 (Section 4.5).
-   This example is shown only in the preprint or revised version and not
-   contained in the submission.
-- `5.2.mlsr` : the example in Section 5.2
-
-Our interpreter does not support file loading directly, but one can run the
-program in a file by:
-```bash
-$ cat [file path] | mlsr
 ```
 
 #### Running tests
