@@ -12,7 +12,7 @@ build: [
 depends: [
   "ocaml" { >= "4.10" }
   "dune" { >= "2.5" }
-  "menhir"
+  "menhir" { = "20200211" }
   "ppx_deriving" { >= "4.4.1" }
   "ounit2" { >= "2.2.2" }
 ]
