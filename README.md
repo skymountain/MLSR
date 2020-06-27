@@ -56,8 +56,6 @@ The directory `examples` contains the example files listed below.
 - `2.2.mlsr` : The example in Section 2.2
 - `2.3.mlsr` : The (ill-typed) example in Section 2.3
 - `4.5_remark1.mlsr` : The (ill-typed) example in Remark 1 (Section 4.5).
-   This example is shown only in the preprint or revised version and not
-   contained in the submission.
 - `5.2.mlsr` : The example in Section 5.2
 
 Our interpreter does not support file loading directly, but one can run the
