@@ -1,4 +1,4 @@
 (test
   (name test)
-  (libraries mlsr alcotest ounit2)
+  (libraries mlsr ounit2)
 )

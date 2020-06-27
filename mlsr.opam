@@ -16,3 +16,4 @@ depends: [
   "ppx_deriving" { >= "4.4.1" }
   "ounit2" { >= "2.2.2" }
 ]
+synopsis: "Funcitonal programming language for algebraic effects and handlers with signature restriction"
