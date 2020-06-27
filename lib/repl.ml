@@ -9,7 +9,7 @@ let rec read_eval_print lexbuf env tyenv =
     flush stderr;
     flush stdout;
     match Parser.main Lexer.main lexbuf with
-    | None -> print_endline "Termianted."
+    | None -> print_endline "Terminated."
     | Some d ->
       let tyenv', tysc = Typing.type_decl tyenv d in
       let env', v_opt = Eval.eval_decl env d in
